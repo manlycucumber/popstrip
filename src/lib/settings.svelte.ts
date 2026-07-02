@@ -2,12 +2,15 @@
 // Uses Svelte 5 runes; mutating `settings.*` updates the UI everywhere.
 
 export type Theme = 'light' | 'dark';
+export type CaptureMode = 'single' | 'quad';
 
 type SettingsShape = {
   theme: Theme;
   mirror: boolean;
   sound: boolean;
   flash: boolean;
+  mode: CaptureMode;
+  countdown: number; // seconds before the shutter fires; 0 = off
 };
 
 const KEY = 'popstrip:settings';
@@ -30,11 +33,15 @@ function load(): Partial<SettingsShape> {
 
 const saved = load();
 
+const COUNTDOWNS = [0, 3, 5, 10];
+
 export const settings = $state<SettingsShape>({
   theme: saved.theme ?? (prefersDark() ? 'dark' : 'light'),
   mirror: saved.mirror ?? true,
   sound: saved.sound ?? true,
   flash: saved.flash ?? true,
+  mode: saved.mode === 'single' ? 'single' : 'quad',
+  countdown: COUNTDOWNS.includes(saved.countdown as number) ? (saved.countdown as number) : 3,
 });
 
 export function saveSettings(): void {

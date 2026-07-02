@@ -1,16 +1,24 @@
 <script lang="ts">
-  import type { Shot } from '../capture';
+  import type { Layout, Shot } from '../capture';
   import { timestampName } from '../capture';
   import { canUseFolder, saveToFolder, downloadBlob } from '../save';
   import { canShareFile, shareFile, canCopyImage, copyImage } from '../share';
 
   let {
     shot,
+    canEdit,
+    currentLayout,
     onRetake,
+    onRetakeCell,
+    onRelayout,
     onToast,
   }: {
     shot: Shot;
+    canEdit: boolean;
+    currentLayout: Layout;
     onRetake: () => void;
+    onRetakeCell: (index: number) => void;
+    onRelayout: (layout: Layout) => void;
     onToast: (message: string) => void;
   } = $props();
 
@@ -18,12 +26,7 @@
   const folder = canUseFolder();
   const copyable = canCopyImage();
   const shareable = $derived(canShareFile(shot.blob, 'popstrip.png'));
-
-  const today = new Date().toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+  const isQuad = $derived(shot.kind === 'quad' || shot.kind === 'strip');
 
   async function save(): Promise<void> {
     if (busy) return;
@@ -68,14 +71,34 @@
 </script>
 
 <div class="review-body">
-  <div class="photo">
+  <div class="photo bare" class:strip={shot.kind === 'strip'}>
     <img src={shot.url} alt="Your latest PopStrip capture" />
-    <div class="caption">PopStrip · <b>{today}</b></div>
   </div>
 
   <div class="review-actions">
     <h2>Looks great!</h2>
     <p>Your photo is ready. Everything stayed on your device.</p>
+
+    {#if canEdit && isQuad}
+      <div class="layouts" role="group" aria-label="Layout">
+        <button class="chip" aria-pressed={currentLayout === 'quad'} onclick={() => onRelayout('quad')} disabled={busy}>
+          ▦ Grid
+        </button>
+        <button class="chip" aria-pressed={currentLayout === 'strip'} onclick={() => onRelayout('strip')} disabled={busy}>
+          ▤ Strip
+        </button>
+      </div>
+      <div class="cellretakes">
+        <span class="cr-label">Redo a shot</span>
+        <div class="cr-row">
+          {#each [0, 1, 2, 3] as i (i)}
+            <button class="cr" onclick={() => onRetakeCell(i)} disabled={busy} aria-label={`Retake photo ${i + 1}`}>
+              {i + 1}
+            </button>
+          {/each}
+        </div>
+      </div>
+    {/if}
 
     <button class="act primary" onclick={save} disabled={busy}>
       <span class="ic">💾</span>
@@ -98,7 +121,7 @@
 
     <button class="act" onclick={onRetake} disabled={busy}>
       <span class="ic">↺</span>
-      <span>Retake<small>back to the booth</small></span>
+      <span>{isQuad ? 'New set' : 'Retake'}<small>back to the booth</small></span>
     </button>
   </div>
 </div>

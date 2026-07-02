@@ -1,14 +1,20 @@
-// Grab the current video frame into a PNG blob. Mirroring is baked in here so
-// the saved photo matches the mirrored preview the user was looking at.
+// Grabbing frames off the live camera. Mirroring is baked in here so a captured
+// frame matches the mirrored preview the user was looking at. Frames are kept as
+// canvases so a burst of them can be composed into a layout (see strip.ts).
+
+export type Layout = 'single' | 'quad' | 'strip';
 
 export type Shot = {
   blob: Blob;
   url: string;
   width: number;
   height: number;
+  kind: Layout;
+  createdAt: number;
 };
 
-export async function captureFrame(video: HTMLVideoElement, mirror: boolean): Promise<Shot> {
+/** Draw the current video frame (mirrored to match the preview) into a canvas. */
+export function grabFrame(video: HTMLVideoElement, mirror: boolean): HTMLCanvasElement {
   const width = video.videoWidth;
   const height = video.videoHeight;
   if (!width || !height) throw new Error('The camera is not ready yet — give it a second and try again.');
@@ -24,12 +30,7 @@ export async function captureFrame(video: HTMLVideoElement, mirror: boolean): Pr
     ctx.scale(-1, 1);
   }
   ctx.drawImage(video, 0, 0, width, height);
-
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not read the photo.'))), 'image/png');
-  });
-
-  return { blob, url: URL.createObjectURL(blob), width, height };
+  return canvas;
 }
 
 export function timestampName(ext = 'png'): string {
