@@ -10,6 +10,9 @@ dist/
 .env.*
 !.env.example
 
+# Deploy target (host/user/path) — machine-local, never committed
+scripts/deploy.env
+
 # OS cruft
 .DS_Store
 Thumbs.db

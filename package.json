@@ -10,7 +10,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview --port 4173 --strictPort",
-    "check": "svelte-check --tsconfig ./tsconfig.json"
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "deploy": "bash scripts/deploy.sh"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.1.2",

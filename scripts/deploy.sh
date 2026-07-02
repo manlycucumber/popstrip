@@ -1,21 +1,35 @@
 #!/usr/bin/env bash
-# Deploy the PopStrip production build to DreamHost over rsync/SSH.
+# Deploy the PopStrip production build to DreamHost over SSH.
 #
-# Usage:
-#   DH_HOST=user@popstrip.app DH_PATH=~/popstrip.app bash scripts/deploy.sh
+# Config comes from env vars, or from a git-ignored scripts/deploy.env:
+#   DH_HOST=user@server.dreamhost.com
+#   DH_PATH=~/yourdomain
 #
-# DH_HOST  SSH login (DreamHost SFTP user @ host)
-# DH_PATH  target web directory for the domain
+# Requires an SSH key already authorized for DH_HOST (passwordless).
+# Uses rsync when available, otherwise falls back to scp (Git Bash has no rsync).
 
 set -euo pipefail
+cd "$(dirname "$0")/.."
 
-: "${DH_HOST:?set DH_HOST=user@host}"
-: "${DH_PATH:?set DH_PATH=~/popstrip.app}"
+# shellcheck disable=SC1091
+[ -f scripts/deploy.env ] && . scripts/deploy.env
+
+: "${DH_HOST:?set DH_HOST (e.g. in scripts/deploy.env: DH_HOST=user@host.dreamhost.com)}"
+: "${DH_PATH:?set DH_PATH (e.g. in scripts/deploy.env: DH_PATH=~/popstrip.app)}"
+
+SSH_OPTS="-o BatchMode=yes"
 
 echo "› Building…"
 npm run build
 
-echo "› Deploying dist/ → ${DH_HOST}:${DH_PATH}/"
-rsync -avz --delete dist/ "${DH_HOST}:${DH_PATH}/"
+if command -v rsync >/dev/null 2>&1; then
+  echo "› rsync → ${DH_HOST}:${DH_PATH}/"
+  rsync -az --delete --exclude '.dh-diag' -e "ssh ${SSH_OPTS}" dist/ "${DH_HOST}:${DH_PATH}/"
+else
+  echo "› scp → ${DH_HOST}:${DH_PATH}/  (rsync not installed)"
+  # Clear old hashed bundles so they don't pile up; keep DreamHost's .dh-diag symlink.
+  ssh ${SSH_OPTS} "${DH_HOST}" "rm -rf ${DH_PATH}/assets"
+  ( cd dist && scp -r ${SSH_OPTS} -q . "${DH_HOST}:${DH_PATH}/" )
+fi
 
-echo "✓ Deployed. Check https://popstrip.app"
+echo "✓ Deployed → https://popstrip.app"

@@ -10,19 +10,39 @@ PopStrip is a **static site** — a production build is just files in `dist/`. I
 
 ## Build & deploy
 
-```bash
-npm run build          # → dist/
-# then upload the CONTENTS of dist/ to the domain's web directory, e.g.:
-rsync -avz --delete dist/ USER@popstrip.app:~/popstrip.app/
-```
-
-Or use the helper script (fills in the rsync for you):
+One command — builds and ships:
 
 ```bash
-DH_HOST=USER@popstrip.app DH_PATH=~/popstrip.app bash scripts/deploy.sh
+npm run deploy
 ```
 
-Replace `USER` and the path with your DreamHost SFTP user and the domain's directory. SFTP (WinSCP / Cyberduck) works too — just upload everything inside `dist/` (including the `.htaccess`) to the web root.
+It reads the target from a git-ignored **`scripts/deploy.env`** (never committed):
+
+```bash
+DH_HOST=popstrip@iad1-shared-b7-37.dreamhost.com
+DH_PATH='~/popstrip.app'   # quote the ~ so it expands on the server, not locally
+```
+
+The script uses `rsync` when available and otherwise falls back to `scp` (Windows / Git Bash has no rsync). It needs an SSH key already authorized for `DH_HOST` — set that up once with:
+
+```bash
+# from PowerShell / Git Bash
+type $HOME/.ssh/id_ed25519.pub | ssh DH_HOST "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+```
+
+Manual equivalent (SFTP / WinSCP / Cyberduck works too — upload everything inside `dist/`, including `.htaccess`):
+
+```bash
+npm run build
+cd dist && scp -r . DH_HOST:~/popstrip.app/
+```
+
+## Behind Cloudflare
+
+`popstrip.app` is fronted by **Cloudflare** (proxied) with DreamHost as the origin (`67.205.31.251`). Two things to keep true:
+
+- Cloudflare **SSL/TLS mode = Full (strict)** — DreamHost serves a valid Let's Encrypt cert on the origin, so Cloudflare should talk to it over HTTPS.
+- The proxied `A popstrip.app` record points at the DreamHost web IP. Deploys don't touch DNS — they only replace files in the web root, so the edge picks them up on the next request (HTML is always revalidated).
 
 ## Notes
 
