@@ -1,0 +1,19 @@
+{
+  "name": "PopStrip",
+  "short_name": "PopStrip",
+  "description": "A free, fun photo booth in your browser. Nothing leaves your device.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#17142a",
+  "theme_color": "#ff2e88",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
