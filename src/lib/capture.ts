@@ -13,8 +13,12 @@ export type Shot = {
   createdAt: number;
 };
 
-/** Draw the current video frame (mirrored to match the preview) into a canvas. */
-export function grabFrame(video: HTMLVideoElement, mirror: boolean): HTMLCanvasElement {
+/**
+ * Draw the current video frame into a canvas, mirrored to match the preview and
+ * with the active effect baked in via `ctx.filter` so the photo is WYSIWYG.
+ * `filter` is a CSS filter string (may reference an SVG filter by url(#id)).
+ */
+export function grabFrame(video: HTMLVideoElement, mirror: boolean, filter = 'none'): HTMLCanvasElement {
   const width = video.videoWidth;
   const height = video.videoHeight;
   if (!width || !height) throw new Error('The camera is not ready yet — give it a second and try again.');
@@ -29,6 +33,7 @@ export function grabFrame(video: HTMLVideoElement, mirror: boolean): HTMLCanvasE
     ctx.translate(width, 0);
     ctx.scale(-1, 1);
   }
+  if (filter && filter !== 'none') ctx.filter = filter;
   ctx.drawImage(video, 0, 0, width, height);
   return canvas;
 }

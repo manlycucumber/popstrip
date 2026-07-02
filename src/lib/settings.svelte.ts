@@ -1,6 +1,8 @@
 // Persisted, reactive user settings (theme + capture toggles).
 // Uses Svelte 5 runes; mutating `settings.*` updates the UI everywhere.
 
+import { isEffectId, type EffectId } from './effects';
+
 export type Theme = 'light' | 'dark';
 export type CaptureMode = 'single' | 'quad';
 
@@ -11,6 +13,7 @@ type SettingsShape = {
   flash: boolean;
   mode: CaptureMode;
   countdown: number; // seconds before the shutter fires; 0 = off
+  effect: EffectId;
 };
 
 const KEY = 'popstrip:settings';
@@ -42,6 +45,7 @@ export const settings = $state<SettingsShape>({
   flash: saved.flash ?? true,
   mode: saved.mode === 'single' ? 'single' : 'quad',
   countdown: COUNTDOWNS.includes(saved.countdown as number) ? (saved.countdown as number) : 3,
+  effect: isEffectId(saved.effect) ? saved.effect : 'normal',
 });
 
 export function saveSettings(): void {

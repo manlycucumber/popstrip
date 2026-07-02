@@ -880,3 +880,68 @@ body {
   font-family: var(--mono);
   font-size: 11px;
 }
+
+/* ---------------- Effects: button + live grid ---------------- */
+.fx-btn.on {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: inset 1.5px 1.5px 0 rgba(255, 255, 255, 0.4), inset -1.5px -1.5px 0 rgba(0, 0, 0, 0.28), 0 0 0 1px var(--edge);
+}
+.fxgrid {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  padding: 6px;
+  background: rgba(10, 8, 20, 0.55);
+}
+.fxcell {
+  position: relative;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 0 0 2px var(--edge);
+  transition: transform 0.1s;
+}
+.fxcell:hover {
+  transform: scale(1.02);
+}
+.fxcell.active {
+  box-shadow: 0 0 0 3px var(--accent), 0 0 12px -2px var(--accent);
+}
+.fxvid {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.fxvid.mirror {
+  transform: scaleX(-1);
+}
+.fxname {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.72));
+  padding: 12px 6px 4px;
+  text-align: center;
+  pointer-events: none;
+}
+.fxcell.active .fxname {
+  color: var(--yellow);
+}
+@media (max-width: 640px) {
+  .fxname {
+    font-size: 10px;
+  }
+}

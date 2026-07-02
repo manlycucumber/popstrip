@@ -48,6 +48,11 @@ export function bindVideo(el: HTMLVideoElement | null): void {
   attachToVideo();
 }
 
+/** The live camera stream, so extra previews (e.g. the effects grid) can share it. */
+export function cameraStream(): MediaStream | null {
+  return stream;
+}
+
 function mapError(e: unknown): CameraError {
   const name = e instanceof DOMException ? e.name : '';
   switch (name) {

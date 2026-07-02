@@ -10,10 +10,11 @@ Open it, smile, grab a photo. PopStrip is a static, client-side web app: your ca
 
 - 📷 Live camera preview + one-tap capture (Spacebar works too)
 - ⏱️ Countdown → flash → shutter, with the iconic **2×2 quad burst** and print-ready photostrips
+- 🎨 **Live effects** — B&W, Sepia, Pop Art, Thermal, Vintage — picked from a grid and baked into every shot
 - 🎞️ A **photo reel** of your recent shots, kept on your device
 - 💾 Save to a folder, share to your apps, or copy — all local
 - 🕹️ 90s-web look with **Light & Dark** modes; works on desktop & mobile
-- 🎨 Effects and video are on the way — see the [Roadmap](ROADMAP.md)
+- 🎬 Funhouse warps and video are on the way — see the [Roadmap](ROADMAP.md)
 
 ## Develop
 

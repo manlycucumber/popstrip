@@ -5,12 +5,14 @@
   import { detectSupport } from './lib/support';
   import { grabFrame, type Layout, type Shot } from './lib/capture';
   import { compose } from './lib/strip';
+  import { effectCss } from './lib/effects';
   import { shutterClick, countdownBeep } from './lib/sound';
   import { celebrate } from './lib/confetti';
   import { reel, loadReel, addCapture } from './lib/history.svelte';
   import Booth from './lib/components/Booth.svelte';
   import Review from './lib/components/Review.svelte';
   import Fallback from './lib/components/Fallback.svelte';
+  import FxDefs from './lib/components/FxDefs.svelte';
 
   const support = detectSupport();
 
@@ -73,7 +75,7 @@
   function fireShutter(): HTMLCanvasElement {
     if (settings.sound) shutterClick();
     doFlash();
-    return grabFrame(videoEl!, settings.mirror);
+    return grabFrame(videoEl!, settings.mirror, effectCss(settings.effect));
   }
 
   async function runCapture(): Promise<void> {
@@ -232,7 +234,15 @@
 
   // Persist settings whenever they change.
   $effect(() => {
-    void [settings.theme, settings.mirror, settings.sound, settings.flash, settings.mode, settings.countdown];
+    void [
+      settings.theme,
+      settings.mirror,
+      settings.sound,
+      settings.flash,
+      settings.mode,
+      settings.countdown,
+      settings.effect,
+    ];
     saveSettings();
   });
 
@@ -364,4 +374,6 @@
   {#if toast}
     <div class="toast" role="status">{toast}</div>
   {/if}
+
+  <FxDefs />
 </div>

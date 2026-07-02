@@ -4,14 +4,9 @@ _Where PopStrip is headed — a faithful, modern Photo Booth for the web. Last u
 
 Every release ships **live** to [popstrip.app](https://popstrip.app). `v1.0.0` = **photos feature-complete**; video is `v2.0.0`; add-ons are `v3.0.0`.
 
-## 🚧 In progress — [v0.2.0](https://github.com/manlycucumber/popstrip/milestone/2) — The loop
+## 🚧 Up next — [v1.0.0](https://github.com/manlycucumber/popstrip/milestone/4) — Warps + full effects → photos feature-complete 🎉
 
-**It starts to feel like Photo Booth.** Countdown → white-screen flash → shutter, the iconic **2×2 quad burst** (now the default), print-ready photostrip composition (grid & strip layouts), redo a single shot, and the **bottom photo reel** of recent captures. Confetti on capture.
-
-## 🗓️ Next
-
-- **[v0.3.0](https://github.com/manlycucumber/popstrip/milestone/3) — Color effects + live grid.** Black & White, Sepia, Pop Art, Thermal, Vintage — plus the 3×3 live effects grid.
-- **[v1.0.0](https://github.com/manlycucumber/popstrip/milestone/4) — Warps + full effects → photos feature-complete.** 🎉 pixi.js funhouse warps (bulge, twirl, mirror, light tunnel…) and shader stylize effects (comic book, x-ray…), effect-intensity sliders, and PWA install.
+pixi.js funhouse **warps** (bulge, twirl, mirror, light tunnel…) and shader **stylize** effects (comic book, x-ray…), effect-intensity sliders, the full 3×3 grid, and PWA install. This is the version where photos are **feature-complete**.
 
 ## 🔭 Later
 
@@ -20,4 +15,6 @@ Every release ships **live** to [popstrip.app](https://popstrip.app). `v1.0.0` =
 
 ## ✅ Released
 
+- **[v0.3.0](https://github.com/manlycucumber/popstrip/milestone/3) — Color effects + live grid.** Normal, B&W, Sepia, Pop Art, Thermal, Vintage — chosen from a live effects grid and baked into every shot.
+- **[v0.2.0](https://github.com/manlycucumber/popstrip/milestone/2) — The loop.** Countdown → flash → shutter, the 2×2 quad burst, print-ready photostrips (grid & strip), single-shot redo, the bottom photo reel, and confetti.
 - **[v0.1.0](https://github.com/manlycucumber/popstrip/milestone/1) — Skeleton.** Live mirrored camera preview, single-photo capture, save / share / copy, Light & Dark, and graceful handling when there's no camera.

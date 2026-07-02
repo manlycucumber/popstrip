@@ -5,7 +5,19 @@ Every version lands on `main`; `main` is always the deployment target for [popst
 
 ## [Unreleased]
 
-_Nothing pending — next up is v0.3.0 (color effects + the live effects grid)._
+_Nothing pending — next up is v1.0.0 (funhouse warps + shader stylize → photos feature-complete)._
+
+## [0.3.0] — 2026-07-02 — Color effects + live grid
+
+### Added
+
+- **Six colour effects**, applied live and baked into every photo: **Normal**, **Black & White**, **Sepia**, **Pop Art** (posterized + punched-up colour), **Thermal** (cold-to-hot heat map), and **Vintage**.
+- **Live effects grid** — tap ✨ to see your face through every effect at once, then tap one to choose it. (Fills out to the full 3×3 when shader effects land in v1.0.)
+- The chosen effect is remembered and baked identically into single shots, 4-up quads, and strips — what you see live is what you save.
+
+### Notes
+
+- Effects are GPU-accelerated CSS/SVG filters (baked on capture via canvas `ctx.filter`) — nothing extra to download. Pop Art & Thermal use inline SVG filters; best in Chromium/Firefox, and rendered in Safari too.
 
 ## [0.2.0] — 2026-07-02 — The loop
 

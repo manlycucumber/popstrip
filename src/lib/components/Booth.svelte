@@ -1,8 +1,10 @@
 <script lang="ts">
   import { camera } from '../camera.svelte';
   import { settings } from '../settings.svelte';
+  import { effectCss, effectLabel, type EffectId } from '../effects';
   import Countdown from './Countdown.svelte';
   import Reel from './Reel.svelte';
+  import EffectGrid from './EffectGrid.svelte';
 
   let {
     capturing,
@@ -25,17 +27,36 @@
   } = $props();
 
   let video = $state<HTMLVideoElement | null>(null);
+  let gridOpen = $state(false);
 
   $effect(() => {
     if (video) registerVideo(video);
   });
+
+  // Never leave the grid covering the feed once a capture starts.
+  $effect(() => {
+    if (capturing) gridOpen = false;
+  });
+
+  function pick(id: EffectId): void {
+    settings.effect = id;
+    gridOpen = false;
+  }
 
   const shutterLabel = $derived(settings.mode === 'quad' ? 'Take four photos (Space)' : 'Take a photo (Space)');
 </script>
 
 <div class="feed-wrap">
   <!-- svelte-ignore a11y_media_has_caption -->
-  <video bind:this={video} class="feed" class:mirror={settings.mirror} autoplay playsinline muted></video>
+  <video
+    bind:this={video}
+    class="feed"
+    class:mirror={settings.mirror}
+    style:filter={effectCss(settings.effect)}
+    autoplay
+    playsinline
+    muted
+  ></video>
   {#if camera.status === 'live'}
     <span class="live">LIVE</span>
   {:else if camera.status === 'requesting'}
@@ -43,6 +64,9 @@
   {/if}
   {#if hint}
     <div class="hint">{hint}</div>
+  {/if}
+  {#if gridOpen && camera.status === 'live'}
+    <EffectGrid onPick={pick} />
   {/if}
   <Countdown n={countdown} {burst} />
 </div>
@@ -68,7 +92,16 @@
     <span class="ring"></span>
   </button>
 
-  <button class="fx-btn" disabled title="Effects arrive in v0.3">✨ Effects <span class="soon">v0.3</span></button>
+  <button
+    class="fx-btn"
+    class:on={gridOpen}
+    onclick={() => (gridOpen = !gridOpen)}
+    disabled={capturing || camera.status !== 'live'}
+    aria-pressed={gridOpen}
+    title="Choose an effect"
+  >
+    ✨ {effectLabel(settings.effect)}
+  </button>
 </div>
 
 <Reel onOpen={onOpenReel} />
