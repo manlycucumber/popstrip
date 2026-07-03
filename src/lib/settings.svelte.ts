@@ -1,7 +1,7 @@
 // Persisted, reactive user settings (theme + capture toggles).
 // Uses Svelte 5 runes; mutating `settings.*` updates the UI everywhere.
 
-import { isEffectId, gpuOf, type EffectId } from './effects';
+import { isEffectId, gpuOf, inFlavor, type EffectId, type FlavorId } from './effects';
 
 export type Theme = 'light' | 'dark';
 export type CaptureMode = 'single' | 'quad' | 'movie';
@@ -19,6 +19,11 @@ type SettingsShape = {
   // back to the effect's default. A map so Twirl and Glow remember their own
   // sweet spots instead of sharing one global knob.
   effectIntensity: Partial<Record<EffectId, number>>;
+  // Which booth "flavor" is active. `undefined` ⇒ the one-time first-run picker
+  // hasn't been answered yet. Once chosen it persists and is switchable anytime.
+  flavor?: FlavorId;
+  // PopStrip-flavor pinned effects, shown first in the effect browser.
+  favorites: EffectId[];
 };
 
 const KEY = 'popstrip:settings';
@@ -53,6 +58,8 @@ export const settings = $state<SettingsShape>({
   countdown: COUNTDOWNS.includes(saved.countdown as number) ? (saved.countdown as number) : 3,
   effect: isEffectId(saved.effect) ? saved.effect : 'normal',
   effectIntensity: { ...(saved.effectIntensity ?? {}) },
+  flavor: saved.flavor === 'photobooth' || saved.flavor === 'popstrip' ? saved.flavor : undefined,
+  favorites: Array.isArray(saved.favorites) ? saved.favorites.filter(isEffectId) : [],
 });
 
 /** Current intensity (0..1) for an effect, falling back to its registered default. */
@@ -77,5 +84,24 @@ export function saveSettings(): void {
 
 export function toggleTheme(): void {
   settings.theme = settings.theme === 'light' ? 'dark' : 'light';
+  saveSettings();
+}
+
+/**
+ * Choose a booth flavor (first-run pick or the titlebar switch). If the current
+ * effect isn't in the new flavor's roster (e.g. leaving PopStrip while Vintage
+ * is active), fall back to Normal — mirrors the WebGL-fallback reset.
+ */
+export function setFlavor(flavor: FlavorId): void {
+  settings.flavor = flavor;
+  if (!inFlavor(settings.effect, flavor)) settings.effect = 'normal';
+  saveSettings();
+}
+
+/** Pin/unpin an effect in the PopStrip effect browser's Favorites row. */
+export function toggleFavorite(id: EffectId): void {
+  settings.favorites = settings.favorites.includes(id)
+    ? settings.favorites.filter((f) => f !== id)
+    : [...settings.favorites, id];
   saveSettings();
 }

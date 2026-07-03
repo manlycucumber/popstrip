@@ -27,9 +27,21 @@ export type ShaderId =
 
 export type GpuFamily = 'stylize' | 'warp';
 
+// Two booth "flavors" share one effect registry. `collections` (when present)
+// limits an effect to certain flavors; omitted ⇒ available in both. The faithful
+// Photobooth carries Apple's exact roster (the two 3×3 pages); PopStrip is the
+// growing superset, so only PopStrip-original effects (e.g. Vintage) are tagged.
+export type FlavorId = 'photobooth' | 'popstrip';
+
 export type Intensity = { default: number; min: number; max: number; label: string };
 
-export type CssEffect = { kind: 'css'; id: EffectId; label: string; css: string };
+export type CssEffect = {
+  kind: 'css';
+  id: EffectId;
+  label: string;
+  css: string;
+  collections?: FlavorId[];
+};
 export type GpuEffect = {
   kind: 'gpu';
   id: EffectId;
@@ -38,6 +50,7 @@ export type GpuEffect = {
   family: GpuFamily;
   shaderId: ShaderId;
   intensity: Intensity;
+  collections?: FlavorId[];
 };
 export type Effect = CssEffect | GpuEffect;
 
@@ -50,7 +63,7 @@ export const EFFECTS: Effect[] = [
   { kind: 'css', id: 'sepia', label: 'Sepia', css: 'sepia(0.85) contrast(1.05) brightness(1.02)' },
   { kind: 'css', id: 'pop', label: 'Pop Art', css: 'url(#ps-pop)' },
   { kind: 'css', id: 'thermal', label: 'Thermal Camera', css: 'url(#ps-thermal)' },
-  { kind: 'css', id: 'vintage', label: 'Vintage', css: 'sepia(0.4) contrast(1.15) saturate(1.35) brightness(1.05)' },
+  { kind: 'css', id: 'vintage', label: 'Vintage', css: 'sepia(0.4) contrast(1.15) saturate(1.35) brightness(1.05)', collections: ['popstrip'] },
   // --- GPU stylize ---
   { kind: 'gpu', id: 'comic', label: 'Comic Book', css: 'none', family: 'stylize', shaderId: 'comic', intensity: I('Ink', 0.6) },
   { kind: 'gpu', id: 'glow', label: 'Glow', css: 'none', family: 'stylize', shaderId: 'glow', intensity: I('Glow', 0.55) },
@@ -95,6 +108,44 @@ export function isGpu(id: EffectId): boolean {
 export function gpuOf(id: EffectId): GpuEffect | null {
   const e = effect(id);
   return e.kind === 'gpu' ? e : null;
+}
+
+// ---- Flavors: one registry, filtered per booth --------------------------
+
+/** Is this effect available in the given flavor? (untagged ⇒ both.) */
+export function inFlavor(id: EffectId, flavor: FlavorId): boolean {
+  const c = effect(id).collections;
+  return !c || c.includes(flavor);
+}
+
+/** The effect ids a flavor exposes, in registry order. */
+export function rosterFor(flavor: FlavorId): EffectId[] {
+  return EFFECTS.filter((e) => inFlavor(e.id, flavor)).map((e) => e.id);
+}
+
+// ---- The PopStrip effect browser: labeled, scrollable categories --------
+//
+// Unlike the fixed 3×3 Photobooth grid, the PopStrip flavor groups its growing
+// roster into scrollable sections (Favorites first, then by kind). Category
+// membership is derived from the effect's kind/family, so a new effect slots in
+// automatically. `favorites` is passed in (it's user state), filtered to the
+// flavor's roster so a favorite that isn't in this flavor is quietly skipped.
+
+export type EffectCategory = { label: string; ids: EffectId[] };
+
+export function browserCategories(flavor: FlavorId, favorites: EffectId[]): EffectCategory[] {
+  const roster = new Set(rosterFor(flavor));
+  const has = (id: EffectId): boolean => roster.has(id);
+  const idsWhere = (pred: (e: Effect) => boolean): EffectId[] =>
+    EFFECTS.filter((e) => has(e.id) && pred(e)).map((e) => e.id);
+
+  const cats: EffectCategory[] = [];
+  const favs = favorites.filter((id) => isEffectId(id) && has(id));
+  if (favs.length) cats.push({ label: 'Favorites', ids: favs });
+  cats.push({ label: 'Color', ids: idsWhere((e) => e.kind === 'css') });
+  cats.push({ label: 'Stylize', ids: idsWhere((e) => e.kind === 'gpu' && e.family === 'stylize') });
+  cats.push({ label: 'Distort', ids: idsWhere((e) => e.kind === 'gpu' && e.family === 'warp') });
+  return cats.filter((c) => c.ids.length);
 }
 
 // ---- The effects grid, Photo-Booth style: 3×3 pages with Normal centered ----

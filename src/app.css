@@ -1,5 +1,9 @@
-/* PopStrip — global styles. 90s-web retro window: title bar, beveled controls,
-   Verdana + Courier, web-safe pop colors, Light + Dark. Subtle border radii. */
+/* PopStrip — global styles. Two booth "flavors" share this sheet:
+   • PopStrip (default) — authentic-90s: sharp corners, flat web-safe color (red),
+     heavy outlines + hard offset shadows, Impact/Arial/Courier, tiled desktop.
+   • Photobooth ([data-flavor='photobooth']) — iMac-G3 Aqua/Platinum re-skin
+     (glossy gel, pinstripe, brushed metal, candy accent) — see the bottom block.
+   Both support Light + Dark via [data-mode]. */
 
 * {
   box-sizing: border-box;
@@ -80,10 +84,12 @@ body {
   --frame: #f4f1ff;
 }
 
-/* Kill all rounded rectangles; re-round only genuine circles. */
-.app *,
-.app *::before,
-.app *::after {
+/* Kill all rounded rectangles (authentic-90s / PopStrip flavor only); re-round
+   genuine circles. The Photobooth flavor opts OUT so its Aqua skin can use soft
+   corners without fighting !important — see the flavor block at the bottom. */
+.app:not([data-flavor='photobooth']) *,
+.app:not([data-flavor='photobooth']) *::before,
+.app:not([data-flavor='photobooth']) *::after {
   border-radius: 0 !important;
 }
 .app .shutter,
@@ -1443,4 +1449,581 @@ body {
   color: #fff;
   padding: 14px 6px;
   opacity: 0.9;
+}
+
+/* ================= v1.5.0: flavor pill + first-run picker ================= */
+.tb-spacer {
+  flex: 1 1 auto;
+}
+.flavor-pill {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  background: var(--panel);
+  border: 2px solid var(--edge);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.4);
+}
+.fp-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-family: var(--font);
+  font-weight: 800;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--panel);
+  padding: 6px 10px;
+  transition: background 0.12s, color 0.12s;
+}
+.fp-opt + .fp-opt {
+  border-left: 2px solid var(--edge);
+}
+.fp-opt.on {
+  background: var(--blue);
+  color: #fff;
+}
+.fp-opt:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.picker-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(20, 12, 14, 0.72);
+}
+.picker-card {
+  width: 100%;
+  max-width: 560px;
+  background: var(--panel);
+  border: 3px solid var(--edge);
+  box-shadow: 10px 10px 0 var(--shadow);
+  padding: 22px;
+}
+.picker-title {
+  margin: 0 0 4px;
+  font-family: var(--display);
+  text-transform: uppercase;
+  font-size: 26px;
+  color: var(--text);
+}
+.picker-sub {
+  margin: 0 0 16px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+.picker-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.picker-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  text-align: left;
+  cursor: pointer;
+  padding: 16px;
+  color: var(--text);
+  background: var(--canvas);
+  border: 2px solid var(--edge);
+  box-shadow: 4px 4px 0 var(--shadow);
+  transition: transform 0.1s, box-shadow 0.12s;
+}
+.picker-choice:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 var(--shadow);
+}
+.picker-choice:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--shadow);
+}
+.picker-choice.pb {
+  border-top: 6px solid var(--blue);
+}
+.picker-choice.ps {
+  border-top: 6px solid var(--red);
+}
+.pc-emoji {
+  font-size: 30px;
+  line-height: 1;
+}
+.pc-name {
+  font-family: var(--display);
+  text-transform: uppercase;
+  font-size: 19px;
+}
+.pc-desc {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* ================= v1.5.0: PopStrip effect browser ================= */
+.fxbrowser {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+}
+.fxb-bar {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  background: var(--panel-2);
+  border-bottom: 2px solid var(--edge);
+}
+.fxb-search {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: inherit;
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 8px 10px;
+  color: var(--text);
+  background: var(--canvas);
+  border: 2px solid var(--edge);
+  box-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.12);
+}
+.fxb-done {
+  flex: 0 0 auto;
+  font: inherit;
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0 14px;
+  color: #141414;
+  background: var(--yellow);
+  border: 2px solid var(--edge);
+  box-shadow: 2px 2px 0 var(--shadow);
+}
+.fxb-chips {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 7px 8px;
+  background: var(--panel);
+  border-bottom: 2px solid var(--edge);
+  scrollbar-width: thin;
+}
+.fxb-chip {
+  flex: 0 0 auto;
+  font: inherit;
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 5px 10px;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 2px solid var(--edge);
+  box-shadow: 2px 2px 0 var(--shadow);
+}
+.fxb-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px;
+  scrollbar-width: thin;
+}
+.fxb-empty {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  padding: 24px;
+  text-align: center;
+}
+.fxb-section + .fxb-section {
+  margin-top: 14px;
+}
+.fxb-h {
+  margin: 0 0 8px;
+  font-family: var(--display);
+  text-transform: uppercase;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+.fxb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 8px;
+}
+.fxb-cell-wrap {
+  position: relative;
+}
+.fxb-cell {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 0 0 2px var(--edge);
+  transition: transform 0.1s;
+}
+.fxb-cell:hover {
+  transform: translateY(-1px);
+}
+.fxb-cell.active {
+  box-shadow: 0 0 0 3px var(--accent), 0 0 12px -2px var(--accent);
+}
+.fxb-cell.disabled {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  display: grid;
+  place-items: center;
+  background: #0a0812;
+  box-shadow: 0 0 0 2px var(--edge);
+  opacity: 0.6;
+}
+.fxb-vid {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.fxb-vid.mirror {
+  transform: scaleX(-1);
+}
+.fxb-name {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.72));
+  padding: 12px 6px 4px;
+  text-align: center;
+  pointer-events: none;
+}
+.fxb-cell.active .fxb-name {
+  color: var(--yellow);
+}
+.fxb-webgl {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--muted);
+}
+.fxb-fav {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 2;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  color: #fff;
+  background: rgba(20, 12, 14, 0.72);
+  border: 2px solid var(--edge);
+  box-shadow: 1px 1px 0 var(--shadow);
+}
+.fxb-fav.on {
+  background: var(--yellow);
+  color: #141414;
+}
+
+@media (max-width: 640px) {
+  .fp-label {
+    display: none;
+  }
+  .picker-choices {
+    grid-template-columns: 1fr;
+  }
+  .fxb-grid {
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  }
+}
+
+/* ================= Photobooth flavor — iMac G3 (Aqua / Platinum) =================
+   A turn-of-the-millennium re-skin over the same DOM: glossy gel buttons,
+   pinstriped chrome, brushed-metal shelf, translucent candy accent (--candy).
+   Only class hooks are restyled — no markup changes, effects untouched. */
+.app[data-flavor='photobooth'] {
+  --candy: #0095b6;
+  --accent: #0a5a72;
+  --accent2: #0095b6;
+  --font: 'Lucida Grande', 'Lucida Sans Unicode', Geneva, 'Segoe UI', Verdana, sans-serif;
+  --display: 'Lucida Grande', 'Lucida Sans Unicode', Geneva, 'Segoe UI', sans-serif;
+  --mono: 'Monaco', 'Lucida Grande', Geneva, monospace;
+  --panel: #e6e8ea;
+  --panel-2: #d7dade;
+  --canvas: #ffffff;
+  --text: #1f2733;
+  --muted: #5b6b7f;
+  --edge: #8a8f96;
+  --shadow: rgba(0, 0, 0, 0.28);
+  --reel: #cfd3d8;
+  --frame: #ffffff;
+  color: var(--text);
+  background-color: #8892a1;
+  background-image: linear-gradient(160deg, #c2cbd6 0%, #8a94a3 55%, #6f7a8a 100%);
+  background-size: auto;
+  background-position: 0 0;
+  background-repeat: no-repeat;
+}
+.app[data-flavor='photobooth'][data-mode='dark'] {
+  --panel: #2b3038;
+  --panel-2: #232830;
+  --canvas: #31363f;
+  --text: #eef1f4;
+  --muted: #aab3bf;
+  --edge: #12161c;
+  --reel: #1c2026;
+  --frame: #eef1f4;
+  background-image: linear-gradient(160deg, #3a4150, #232830 60%, #171b21);
+}
+
+/* Title bar → pinstriped Platinum, dark centered-ish label, candy gel lens. */
+.app[data-flavor='photobooth'] .titlebar {
+  color: var(--text);
+  background: linear-gradient(#fbfbfb, #d7dade);
+  border-bottom: 1px solid #9098a2;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.app[data-flavor='photobooth'][data-mode='dark'] .titlebar {
+  background: linear-gradient(#3c434e, #2b3038);
+  border-bottom: 1px solid #12161c;
+}
+.app[data-flavor='photobooth'] .titlebar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.4;
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.7) 0 1px, transparent 1px 2px);
+}
+.app[data-flavor='photobooth'] .wordmark {
+  color: #33383f;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.app[data-flavor='photobooth'][data-mode='dark'] .wordmark {
+  color: #eef1f4;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+}
+.app[data-flavor='photobooth'] .wordmark .lens {
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  background: radial-gradient(circle at 38% 32%, #7fd0e2, var(--candy));
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.7), 0 1px 1px rgba(0, 0, 0, 0.25);
+  border-radius: 50%;
+}
+.app[data-flavor='photobooth'] .wordmark .lens::before {
+  inset: 4px;
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 50%;
+}
+.app[data-flavor='photobooth'] .wordmark .lens::after {
+  content: none;
+}
+
+/* Flavor pill → Platinum gel segment. */
+.app[data-flavor='photobooth'] .flavor-pill {
+  overflow: hidden;
+  border: 1px solid #9098a2;
+  border-radius: 6px;
+  background: linear-gradient(#fafafa, #dcdfe3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 1px 1px rgba(0, 0, 0, 0.15);
+}
+.app[data-flavor='photobooth'] .fp-opt {
+  color: #55606e;
+  background: transparent;
+  text-transform: none;
+  font-weight: 600;
+}
+.app[data-flavor='photobooth'] .fp-opt + .fp-opt {
+  border-left: 1px solid #a2a8b0;
+}
+.app[data-flavor='photobooth'] .fp-opt.on {
+  color: #fff;
+  background: linear-gradient(color-mix(in srgb, var(--candy) 55%, white), color-mix(in srgb, var(--candy) 82%, #123));
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+/* Toolbar + Controls + device picker → Platinum gel. */
+.app[data-flavor='photobooth'] .toolbar {
+  background: var(--panel);
+  border-bottom: 1px solid #9098a2;
+}
+.app[data-flavor='photobooth'] .device-pick,
+.app[data-flavor='photobooth'] .controls-btn {
+  color: var(--text);
+  text-transform: none;
+  font-weight: 600;
+  border: 1px solid #9098a2;
+  border-radius: 6px;
+  background: linear-gradient(#fafafa, #dcdfe3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75), 0 1px 1px rgba(0, 0, 0, 0.12);
+}
+.app[data-flavor='photobooth'] .controls-btn.on,
+.app[data-flavor='photobooth'] .controls-btn:hover {
+  color: #fff;
+  background: linear-gradient(color-mix(in srgb, var(--candy) 45%, white), color-mix(in srgb, var(--candy) 78%, #123));
+}
+.app[data-flavor='photobooth'] .ctrl-menu {
+  border: 1px solid #9098a2;
+  border-radius: 8px;
+  background: var(--canvas);
+  box-shadow: 0 10px 26px -8px rgba(0, 0, 0, 0.5);
+}
+.app[data-flavor='photobooth'] .cm-row:hover:not(:disabled) {
+  color: var(--text);
+  background: color-mix(in srgb, var(--candy) 16%, white);
+}
+
+/* Viewport frame gets a candy outline (the iMac's tinted bezel). */
+.app[data-flavor='photobooth'] .feed-wrap {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--candy) 70%, white), 0 0 0 3px rgba(0, 0, 0, 0.32),
+    0 12px 26px -10px rgba(0, 0, 0, 0.5);
+}
+
+/* Dock: Platinum gel mode segment, candy active. */
+.app[data-flavor='photobooth'] .modes {
+  border: 1px solid #9098a2;
+  border-radius: 7px;
+  background: linear-gradient(#fafafa, #dcdfe3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 1px 1px rgba(0, 0, 0, 0.15);
+}
+.app[data-flavor='photobooth'] .modes button {
+  color: #55606e;
+  text-transform: none;
+}
+.app[data-flavor='photobooth'] .modes button[aria-pressed='true'] {
+  color: #fff;
+  border-radius: 5px;
+  background: linear-gradient(color-mix(in srgb, var(--candy) 52%, white), color-mix(in srgb, var(--candy) 80%, #123));
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.22);
+}
+
+/* Shutter → glossy red gel. */
+.app[data-flavor='photobooth'] .shutter {
+  border: 1px solid #9c1f18;
+  background: radial-gradient(circle at 42% 30%, #ff9a90 0%, #ff5f56 34%, #d23b2f 70%, #b12318 100%);
+  box-shadow: inset 0 2px 3px rgba(255, 255, 255, 0.55), inset 0 -3px 6px rgba(0, 0, 0, 0.28),
+    0 3px 5px rgba(0, 0, 0, 0.3);
+}
+.app[data-flavor='photobooth'] .shutter:hover {
+  transform: translateY(-1px);
+  box-shadow: inset 0 2px 3px rgba(255, 255, 255, 0.6), 0 4px 7px rgba(0, 0, 0, 0.32);
+}
+.app[data-flavor='photobooth'] .shutter:active {
+  transform: translateY(1px);
+  box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.4);
+}
+.app[data-flavor='photobooth'] .shutter .ring {
+  border-color: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Effects button → glossy blue Aqua gel; candy when open. */
+.app[data-flavor='photobooth'] .fx-btn {
+  color: #123a5e;
+  text-transform: none;
+  font-weight: 600;
+  border: 1px solid #2f6fb0;
+  border-radius: 6px;
+  background: linear-gradient(#eaf5ff, #c3e0f7 45%, #8fc0ea);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.85), 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+.app[data-flavor='photobooth'] .fx-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.9), 0 2px 4px rgba(0, 0, 0, 0.24);
+}
+.app[data-flavor='photobooth'] .fx-btn:active {
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+.app[data-flavor='photobooth'] .fx-btn.on {
+  color: #fff;
+  background: linear-gradient(color-mix(in srgb, var(--candy) 48%, white), color-mix(in srgb, var(--candy) 82%, #123a5e));
+}
+.app[data-flavor='photobooth'] .fx-btn.mic.muted {
+  color: var(--muted);
+  background: linear-gradient(#fafafa, #dcdfe3);
+}
+
+/* Intensity slider → Platinum well, candy fill. */
+.app[data-flavor='photobooth'] .fx-intensity {
+  border: 1px solid #9098a2;
+  border-radius: 6px;
+  background: linear-gradient(#fafafa, #dcdfe3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+.app[data-flavor='photobooth'] .fx-intensity input[type='range'] {
+  background: linear-gradient(90deg, var(--candy), #7fd0e2);
+}
+
+/* Status shelf → brushed metal. */
+.app[data-flavor='photobooth'] .statusbar {
+  color: var(--text);
+  background: linear-gradient(#e9ebee, #c9cdd2);
+  border-top: 1px solid #9098a2;
+}
+.app[data-flavor='photobooth'][data-mode='dark'] .statusbar {
+  background: linear-gradient(#3c434e, #2b3038);
+}
+.app[data-flavor='photobooth'] .statusbar .priv {
+  color: var(--muted);
+}
+
+/* Reel thumbs → glossy tray tiles. */
+.app[data-flavor='photobooth'] .reel-open {
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+
+/* Effect grid selection tinted candy. */
+.app[data-flavor='photobooth'] .fxcell.active {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--candy) 85%, white);
+}
+.app[data-flavor='photobooth'] .fxcell.active .fxname {
+  color: #fff;
+}
+
+/* Modal → Platinum sheet. */
+.app[data-flavor='photobooth'] .modal-card {
+  border: 1px solid #9098a2;
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: 0 14px 32px -8px rgba(0, 0, 0, 0.5);
+}
+.app[data-flavor='photobooth'] .modal-close {
+  color: var(--text);
+  border: 1px solid #9098a2;
+  border-radius: 6px;
+  background: linear-gradient(#fafafa, #dcdfe3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.app[data-flavor='photobooth'] :focus-visible {
+  outline-color: var(--candy);
 }

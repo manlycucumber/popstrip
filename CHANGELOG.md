@@ -5,7 +5,40 @@ Every version lands on `main`; `main` is always the deployment target for [popst
 
 ## [Unreleased]
 
-_Next: **v1.5.0** — two "booth flavours" (a faithful **Photobooth** and our extensible **PopStrip**) with a first-run picker + a scalable effect browser (favorites / recents / search). Then **v1.6.0** — GIF & boomerang exports, on the way to v2.0.0 (video feature-complete). Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
+_Next: **v1.6.0** — GIF & boomerang exports, on the way to v2.0.0 (video feature-complete). Then add-ons (v3.0.0): green-screen backdrops + AR. Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
+
+## [1.5.0] — 2026-07-03 — Two booth flavours 🎚️
+
+PopStrip is now **two booths in one**. Pick your flavour the first time you visit —
+and switch anytime from the new title-bar pill:
+
+- **📷 Photobooth** — the faithful one. Apple's exact effect roster and the classic
+  **paged 3×3 grid**, re-skinned as if Photo Booth had shipped on an **iMac G3**:
+  glossy Aqua/Platinum gel buttons, a pinstriped title bar, a brushed-metal shelf,
+  and a Bondi-blue candy accent.
+- **✨ PopStrip** — ours, built to grow. The paged grid gives way to a **scalable
+  effect browser**: categories you can scroll (Color · Stylize · Distort), a
+  **⭐ Favorites** row you pin yourself, and a **search** box — so the roster can
+  keep growing without turning into “15 pages of scrolling.” Keeps the bold 90s look.
+
+### Added
+
+- **First-run “pick your booth”** — a one-time choice, remembered after that.
+- **Title-bar flavour pill** to switch booths whenever you like. Switching keeps
+  everything else (your shots, modes, camera) exactly where it was.
+- **Effect browser** (PopStrip flavour) with **Favorites**, **search**, and labeled,
+  jump-to categories. Live previews render only for effects actually on screen, so
+  the roster can scale without dropping frames.
+
+### Notes
+
+- **Photos and clips are byte-for-byte unchanged** — flavours change the interface
+  and the effect roster on offer, never how a shot is rendered. The Photobooth roster
+  stays frozen to Apple's set (so the `pb-verify` accuracy harness stays meaningful);
+  new effects, backgrounds and AR will land only in PopStrip.
+- The GPU effect engine, pixi and the mp4 encoder stay **lazy-loaded** — the base
+  download is essentially unchanged.
+- Next: **GIF & boomerang** (v1.6.0), then video feature-complete (v2.0.0).
 
 ## [1.4.0] — 2026-07-03 — Authentic-90s refresh + shell
 

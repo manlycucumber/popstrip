@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { settings, saveSettings, effectIntensity, type CaptureMode } from './lib/settings.svelte';
+  import { settings, saveSettings, effectIntensity, setFlavor, type CaptureMode } from './lib/settings.svelte';
   import { camera, startCamera, switchCamera, bindVideo } from './lib/camera.svelte';
   import { detectSupport } from './lib/support';
   import { grabFrame, grabGpuFrame, type Layout, type Shot } from './lib/capture';
@@ -15,6 +15,7 @@
   import Review from './lib/components/Review.svelte';
   import Modal from './lib/components/Modal.svelte';
   import Controls from './lib/components/Controls.svelte';
+  import FlavorPicker from './lib/components/FlavorPicker.svelte';
   import Fallback from './lib/components/Fallback.svelte';
   import FxDefs from './lib/components/FxDefs.svelte';
 
@@ -502,6 +503,8 @@
       settings.countdown,
       settings.effect,
       settings.effectIntensity,
+      settings.flavor,
+      settings.favorites,
     ];
     saveSettings();
   });
@@ -516,10 +519,29 @@
   });
 </script>
 
-<div class="app" data-mode={settings.theme}>
+<div class="app" data-mode={settings.theme} data-flavor={settings.flavor ?? 'popstrip'}>
   <!-- Title bar -->
   <div class="titlebar">
     <div class="wordmark"><span class="lens"></span><span>PopStrip</span></div>
+    <div class="tb-spacer"></div>
+    <div class="flavor-pill" role="group" aria-label="Booth flavor">
+      <button
+        class="fp-opt"
+        class:on={settings.flavor === 'photobooth'}
+        onclick={() => setFlavor('photobooth')}
+        disabled={recState !== 'idle' || capturing}
+        aria-pressed={settings.flavor === 'photobooth'}
+        title="Faithful Photo Booth"
+      >📷 <span class="fp-label">Photobooth</span></button>
+      <button
+        class="fp-opt"
+        class:on={settings.flavor === 'popstrip'}
+        onclick={() => setFlavor('popstrip')}
+        disabled={recState !== 'idle' || capturing}
+        aria-pressed={settings.flavor === 'popstrip'}
+        title="Our extensible booth"
+      >✨ <span class="fp-label">PopStrip</span></button>
+    </div>
   </div>
 
   <!-- Toolbar -->
@@ -596,6 +618,10 @@
 
   {#if toast}
     <div class="toast" role="status">{toast}</div>
+  {/if}
+
+  {#if settings.flavor === undefined}
+    <FlavorPicker />
   {/if}
 
   <FxDefs />

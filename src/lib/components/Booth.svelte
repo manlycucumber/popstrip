@@ -7,6 +7,7 @@
   import Countdown from './Countdown.svelte';
   import Reel from './Reel.svelte';
   import EffectGrid from './EffectGrid.svelte';
+  import EffectBrowser from './EffectBrowser.svelte';
 
   let {
     capturing,
@@ -265,7 +266,14 @@
     <div class="nowfx">✦ {fxToast}</div>
   {/if}
   {#if gridOpen && camera.status === 'live'}
-    <EffectGrid onPick={pick} />
+    <!-- Photobooth keeps Apple's faithful 3×3 grid; PopStrip gets the scalable
+         browser. Both are the sole renderLive consumer while open (gridOpen
+         yields Booth's own preview/movie loops), so exclusivity holds either way. -->
+    {#if settings.flavor === 'photobooth'}
+      <EffectGrid onPick={pick} />
+    {:else}
+      <EffectBrowser onPick={pick} onClose={() => (gridOpen = false)} />
+    {/if}
   {/if}
   <Countdown n={countdown} {burst} />
 </div>
