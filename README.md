@@ -10,7 +10,7 @@ Open it, smile, grab a photo. PopStrip is a static, client-side web app: your ca
 
 - 📷 Live camera preview + one-tap capture (Spacebar works too)
 - ⏱️ Countdown → flash → shutter, with the iconic **2×2 quad burst** and print-ready photostrips
-- 🎨 **Live effects** — colour (B&W, Sepia, Pop Art, Thermal, Vintage) plus **funhouse warps** (Bulge, Dent, Twirl, Light Tunnel) and **shader stylize** (Comic Book, Dreamy Glow, X-Ray), each with a strength dial — picked from a grid and baked into every shot
+- 🎨 **The full Photo Booth effect set** — colour (Sepia, Black & White, Pop Art, Thermal Camera, …), **shader stylize** (Comic Book, Glow, X-Ray, Colored Pencil) and **funhouse warps** (Bulge, Dent, Twirl, Squeeze, Mirror, Light Tunnel, Fish Eye, Stretch), each with a strength dial — chosen from a **paged 3×3 grid** and baked into every shot
 - 🎞️ A **photo reel** of your recent shots, kept on your device
 - 💾 Save to a folder, share to your apps, or copy — all local
 - 🕹️ 90s-web look with **Light & Dark** modes; works on desktop & mobile

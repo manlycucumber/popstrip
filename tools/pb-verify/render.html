@@ -1,0 +1,107 @@
+<!doctype html>
+<!--
+  PopStrip effect renderer for the accuracy harness.
+
+  Renders each GPU effect against a fixed, deterministic 4:3 test chart using the
+  REAL production shaders (../../src/lib/gpu/shaders.ts) via pixi — the same GLSL
+  path the app ships. Served by the Vite dev server; driven headlessly by
+  render.mjs (Playwright), or open it in a browser and click "Download all" for a
+  manual run.
+
+  Output is exposed on window.__render = { chart, effects: {id: pngDataURL}, meta }.
+  The SAME chart is what the Mac side must feed into Photo Booth (via OBS virtual
+  camera) so the two outputs are comparable. See README.md.
+-->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>pb-verify · PopStrip render</title>
+    <style>
+      body { font-family: monospace; background: #14101f; color: #eee; padding: 12px; }
+      #thumbs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+      figure { margin: 0; font-size: 11px; text-align: center; }
+      canvas { width: 160px; height: 120px; border: 1px solid #333; display: block; }
+    </style>
+  </head>
+  <body>
+    <button id="dl">Download all</button>
+    <pre id="status">rendering…</pre>
+    <div id="thumbs"></div>
+    <script type="module">
+      import {
+        autoDetectRenderer, Sprite, Texture, Filter, GlProgram, UniformGroup,
+        defaultFilterVert, RenderTexture,
+      } from 'pixi.js';
+      import { FRAG_HEADER, FRAGMENTS } from '/src/lib/gpu/shaders.ts';
+      import { EFFECTS } from '/src/lib/effects.ts';
+
+      // Chart size = 4:3, matching PopStrip capture + Photo Booth's landscape frame.
+      const W = 640, H = 480;
+
+      // Per-shader default intensity from the real registry (override via
+      // window.__intensities = { shaderId: 0..1 } to match a recorded PB slider).
+      const defaults = {};
+      for (const e of EFFECTS) if (e.kind === 'gpu') defaults[e.shaderId] = e.intensity.default;
+      const intensities = Object.assign({}, defaults, window.__intensities || {});
+
+      // Deterministic test chart: color patches (ΔE), a fine grid + radial target
+      // and diagonals (warp displacement / edge maps), corner registration marks.
+      function drawChart(ctx) {
+        ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, W, H);
+        const patches = ['#ff0000','#00ff00','#0000ff','#ffff00','#00ffff','#ff00ff','#ffffff','#000000','#c08858'];
+        const pw = W / 9;
+        patches.forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(i * pw, 0, pw, 60); });
+        ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1;
+        for (let x = 0; x <= W; x += 32) { ctx.beginPath(); ctx.moveTo(x, 60); ctx.lineTo(x, H); ctx.stroke(); }
+        for (let y = 60; y <= H; y += 32) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(0, 60); ctx.lineTo(W, H); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(W, 60); ctx.lineTo(0, H); ctx.stroke();
+        ctx.strokeStyle = '#ff2e88'; ctx.lineWidth = 5;
+        for (let r = 40; r < 220; r += 40) { ctx.beginPath(); ctx.arc(W/2, (H+60)/2, r, 0, Math.PI*2); ctx.stroke(); }
+        ctx.fillStyle = '#0f0'; // corner register marks
+        for (const [cx, cy] of [[10,70],[W-10,70],[10,H-10],[W-10,H-10]]) { ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI*2); ctx.fill(); }
+      }
+
+      const chart = document.createElement('canvas');
+      chart.width = W; chart.height = H;
+      drawChart(chart.getContext('2d'));
+
+      const renderer = await autoDetectRenderer({ preference: 'webgl', width: W, height: H, antialias: true, backgroundAlpha: 0, resolution: 1 });
+      const texture = Texture.from(chart);
+      const sprite = new Sprite(texture); sprite.anchor.set(0.5); sprite.position.set(W / 2, H / 2);
+
+      function renderEffect(id, strength) {
+        const glProgram = GlProgram.from({ vertex: defaultFilterVert, fragment: FRAG_HEADER + FRAGMENTS[id], name: 'pb-' + id });
+        const filter = new Filter({ glProgram, resources: { warp: new UniformGroup({ uStrength: { value: strength, type: 'f32' } }) } });
+        sprite.filters = [filter];
+        const rt = RenderTexture.create({ width: W, height: H, resolution: 1 });
+        renderer.render({ container: sprite, target: rt });
+        const canvas = renderer.extract.canvas(rt);
+        rt.destroy(true);
+        return canvas.toDataURL('image/png');
+      }
+
+      const effects = {};
+      const thumbs = document.getElementById('thumbs');
+      const chartUrl = chart.toDataURL('image/png');
+      for (const id of Object.keys(FRAGMENTS)) {
+        const url = renderEffect(id, intensities[id] ?? 0.6);
+        effects[id] = url;
+        const fig = document.createElement('figure');
+        const img = new Image(); img.src = url; img.style.width = '160px';
+        const cap = document.createElement('figcaption'); cap.textContent = id + ' @ ' + (intensities[id] ?? 0.6);
+        fig.append(img, cap); thumbs.appendChild(fig);
+      }
+
+      window.__render = { chart: chartUrl, effects, meta: { W, H, intensities, count: Object.keys(effects).length } };
+      document.getElementById('status').textContent = 'rendered ' + Object.keys(effects).length + ' effects @ ' + W + '×' + H;
+
+      document.getElementById('dl').onclick = () => {
+        const save = (name, url) => { const a = document.createElement('a'); a.href = url; a.download = name; a.click(); };
+        save('chart.png', chartUrl);
+        for (const [id, url] of Object.entries(effects)) save('ours-' + id + '.png', url);
+      };
+    </script>
+  </body>
+</html>

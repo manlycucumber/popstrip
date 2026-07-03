@@ -5,7 +5,39 @@ Every version lands on `main`; `main` is always the deployment target for [popst
 
 ## [Unreleased]
 
-_Nothing pending — next up is v2.0.0 (video: movie clips, then mp4 & GIF/boomerang)._
+_Next up is v2.0.0 (video: movie clips, then mp4 & GIF/boomerang). Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
+
+## [1.1.0] — 2026-07-03 — Photo Booth fidelity
+
+Reconciles the effects and presentation with native macOS Photo Booth, researched
+against Apple's docs across versions.
+
+### Added
+
+- **Five more effects**, completing Photo Booth's roster: **Colored Pencil**,
+  **Squeeze**, **Mirror**, **Fish Eye**, and **Stretch** — 18 in all.
+- **Paged 3×3 effects grid**, just like Photo Booth: a **Color** page, a
+  **Distort** page, and a **PopStrip** page, with **Normal always in the centre**
+  and arrows + page dots to flip between them.
+- **`tools/pb-verify`** — an automated per-effect accuracy harness that renders
+  our real shaders against a test chart and (once Photo Booth references are
+  captured on a Mac) scores each effect by SSIM / colour error / edge match.
+
+### Changed
+
+- **Photos are now 4:3** — the live preview, capture, and print layouts all share
+  one landscape aspect (matching Photo Booth), so what you see is what you save.
+- **Effect names match Photo Booth** (Black & White, Glow, Thermal Camera, …).
+- **Distortions retuned toward Photo Booth's Core Image defaults** — most visibly,
+  **Dent is much deeper** now. Each effect's intensity slider still lets you dial
+  it up or down; the defaults just start where Photo Booth sits.
+
+### Notes
+
+- Photo Booth's effects are Apple Core Image filters, so each of ours targets a
+  specific one (Bulge ≈ CIBumpDistortion, Twirl ≈ CITwirlDistortion, Comic Book ≈
+  CIComicEffect, …). Exact pixel parity for a few effects is pending on-device
+  Photo Booth references — see `tools/pb-verify`.
 
 ## [1.0.0] — 2026-07-02 — Warps + shader stylize → photos feature-complete 🎉
 

@@ -103,9 +103,11 @@ export async function startCamera(deviceId?: string): Promise<void> {
   camera.error = null;
   stopStream();
 
+  // 4:3 — matches macOS Photo Booth's landscape capture (the whole app composes
+  // and previews at 4:3, so a 4:3 stream keeps preview == capture == print).
   const video: MediaTrackConstraints = deviceId
-    ? { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
-    : { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } };
+    ? { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 960 } }
+    : { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 960 } };
 
   try {
     stream = await navigator.mediaDevices.getUserMedia({ video, audio: false });

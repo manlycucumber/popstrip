@@ -1,0 +1,14 @@
+{
+  "_comment": "Pass thresholds per effect. `default` applies unless overridden in perEffect. Calibrate on the first real run against Photo Booth references, then freeze. ssim/edgeIoU are minimums; mae is a maximum (0..255).",
+  "default": { "ssim": 0.9, "mae": 12, "edgeIoU": 0.7 },
+  "perEffect": {
+    "bulge": { "edgeIoU": 0.7, "ssim": 0.6 },
+    "dent": { "edgeIoU": 0.7, "ssim": 0.6 },
+    "twirl": { "edgeIoU": 0.65, "ssim": 0.55 },
+    "squeeze": { "edgeIoU": 0.7, "ssim": 0.6 },
+    "mirror": { "edgeIoU": 0.75, "ssim": 0.6 },
+    "tunnel": { "edgeIoU": 0.6, "ssim": 0.5 },
+    "fisheye": { "edgeIoU": 0.7, "ssim": 0.6 },
+    "stretch": { "edgeIoU": 0.7, "ssim": 0.6 }
+  }
+}

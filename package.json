@@ -1,6 +1,6 @@
 {
   "name": "popstrip",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "description": "A free, fun, browser-based photo booth — a faithful Photo Booth clone.",
@@ -11,7 +11,9 @@
     "build": "vite build",
     "preview": "vite preview --port 4173 --strictPort",
     "check": "svelte-check --tsconfig ./tsconfig.json",
-    "deploy": "bash scripts/deploy.sh"
+    "deploy": "bash scripts/deploy.sh",
+    "verify:render": "node tools/pb-verify/render.mjs",
+    "verify:effects": "node tools/pb-verify/compare.mjs && node tools/pb-verify/report.mjs"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.1.2",

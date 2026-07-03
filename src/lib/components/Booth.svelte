@@ -103,6 +103,7 @@
   const shutterLabel = $derived(settings.mode === 'quad' ? 'Take four photos (Space)' : 'Take a photo (Space)');
 </script>
 
+<div class="feed-outer">
 <div class="feed-wrap">
   <!-- svelte-ignore a11y_media_has_caption -->
   <video
@@ -129,6 +130,7 @@
     <EffectGrid onPick={pick} />
   {/if}
   <Countdown n={countdown} {burst} />
+</div>
 </div>
 
 <div class="dock">

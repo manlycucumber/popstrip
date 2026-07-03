@@ -5,19 +5,26 @@
 //    grid) and as canvas `ctx.filter` (baked into the photo). Simple looks are
 //    plain CSS functions; Pop Art / Thermal reference an SVG <filter> (FxDefs).
 //  • kind:'gpu'  — a WebGL shader (pixi.js) that can't ride on `ctx.filter`:
-//    funhouse warps (bulge/dent/twirl/tunnel) and shader stylize (comic/glow/
-//    x-ray). Rendered live to a <canvas> and extracted at capture time so the
-//    photo is still WYSIWYG. Each carries an `intensity` (normalized 0..1) that
-//    a slider drives; the shader maps it to its own physical range.
+//    funhouse warps and shader stylize. Rendered live to a <canvas> and
+//    extracted at capture time so the photo is still WYSIWYG. Each carries an
+//    `intensity` (normalized 0..1) that a slider drives; the shader maps it to
+//    its own physical range.
 //
-// The 6 CSS effects are unchanged from v0.3.0. GPU effects arrive in v1.0.0.
+// Names and the roster mirror macOS Photo Booth. Photo Booth's effects are Core
+// Image filters, so each of ours targets a specific CIFilter's look (e.g. Bulge
+// ≈ CIBumpDistortion, Twirl ≈ CITwirlDistortion, Comic Book ≈ CIComicEffect).
+// The grid is organized into 3×3 pages with Normal always in the centre — see
+// EFFECT_PAGES below.
 
 export type EffectId =
   | 'normal' | 'bw' | 'sepia' | 'pop' | 'thermal' | 'vintage'
-  | 'comic' | 'glow' | 'xray'
-  | 'bulge' | 'dent' | 'twirl' | 'tunnel';
+  | 'comic' | 'glow' | 'xray' | 'pencil'
+  | 'bulge' | 'dent' | 'twirl' | 'squeeze' | 'mirror' | 'tunnel' | 'fisheye' | 'stretch';
 
-export type ShaderId = 'comic' | 'glow' | 'xray' | 'bulge' | 'dent' | 'twirl' | 'tunnel';
+export type ShaderId =
+  | 'comic' | 'glow' | 'xray' | 'pencil'
+  | 'bulge' | 'dent' | 'twirl' | 'squeeze' | 'mirror' | 'tunnel' | 'fisheye' | 'stretch';
+
 export type GpuFamily = 'stylize' | 'warp';
 
 export type Intensity = { default: number; min: number; max: number; label: string };
@@ -37,22 +44,27 @@ export type Effect = CssEffect | GpuEffect;
 const I = (label: string, def: number): Intensity => ({ default: def, min: 0, max: 1, label });
 
 export const EFFECTS: Effect[] = [
-  // --- CSS (verbatim from v0.3.0) ---
+  // --- CSS color effects ---
   { kind: 'css', id: 'normal', label: 'Normal', css: 'none' },
-  { kind: 'css', id: 'bw', label: 'B&W', css: 'grayscale(1) contrast(1.06)' },
+  { kind: 'css', id: 'bw', label: 'Black & White', css: 'grayscale(1) contrast(1.06)' },
   { kind: 'css', id: 'sepia', label: 'Sepia', css: 'sepia(0.85) contrast(1.05) brightness(1.02)' },
   { kind: 'css', id: 'pop', label: 'Pop Art', css: 'url(#ps-pop)' },
-  { kind: 'css', id: 'thermal', label: 'Thermal', css: 'url(#ps-thermal)' },
+  { kind: 'css', id: 'thermal', label: 'Thermal Camera', css: 'url(#ps-thermal)' },
   { kind: 'css', id: 'vintage', label: 'Vintage', css: 'sepia(0.4) contrast(1.15) saturate(1.35) brightness(1.05)' },
   // --- GPU stylize ---
   { kind: 'gpu', id: 'comic', label: 'Comic Book', css: 'none', family: 'stylize', shaderId: 'comic', intensity: I('Ink', 0.6) },
-  { kind: 'gpu', id: 'glow', label: 'Dreamy Glow', css: 'none', family: 'stylize', shaderId: 'glow', intensity: I('Glow', 0.55) },
+  { kind: 'gpu', id: 'glow', label: 'Glow', css: 'none', family: 'stylize', shaderId: 'glow', intensity: I('Glow', 0.55) },
   { kind: 'gpu', id: 'xray', label: 'X-Ray', css: 'none', family: 'stylize', shaderId: 'xray', intensity: I('Exposure', 0.5) },
-  // --- GPU warp ---
+  { kind: 'gpu', id: 'pencil', label: 'Colored Pencil', css: 'none', family: 'stylize', shaderId: 'pencil', intensity: I('Pencil', 0.6) },
+  // --- GPU warps (distortions) ---
   { kind: 'gpu', id: 'bulge', label: 'Bulge', css: 'none', family: 'warp', shaderId: 'bulge', intensity: I('Bulge', 0.6) },
-  { kind: 'gpu', id: 'dent', label: 'Dent', css: 'none', family: 'warp', shaderId: 'dent', intensity: I('Dent', 0.6) },
-  { kind: 'gpu', id: 'twirl', label: 'Twirl', css: 'none', family: 'warp', shaderId: 'twirl', intensity: I('Twist', 0.5) },
-  { kind: 'gpu', id: 'tunnel', label: 'Light Tunnel', css: 'none', family: 'warp', shaderId: 'tunnel', intensity: I('Tunnel', 0.6) },
+  { kind: 'gpu', id: 'dent', label: 'Dent', css: 'none', family: 'warp', shaderId: 'dent', intensity: I('Dent', 0.7) },
+  { kind: 'gpu', id: 'twirl', label: 'Twirl', css: 'none', family: 'warp', shaderId: 'twirl', intensity: I('Twist', 0.6) },
+  { kind: 'gpu', id: 'squeeze', label: 'Squeeze', css: 'none', family: 'warp', shaderId: 'squeeze', intensity: I('Squeeze', 0.5) },
+  { kind: 'gpu', id: 'mirror', label: 'Mirror', css: 'none', family: 'warp', shaderId: 'mirror', intensity: I('Mirror', 1.0) },
+  { kind: 'gpu', id: 'tunnel', label: 'Light Tunnel', css: 'none', family: 'warp', shaderId: 'tunnel', intensity: I('Tunnel', 0.5) },
+  { kind: 'gpu', id: 'fisheye', label: 'Fish Eye', css: 'none', family: 'warp', shaderId: 'fisheye', intensity: I('Fisheye', 0.5) },
+  { kind: 'gpu', id: 'stretch', label: 'Stretch', css: 'none', family: 'warp', shaderId: 'stretch', intensity: I('Stretch', 0.5) },
 ];
 
 const BY_ID = new Map(EFFECTS.map((e) => [e.id, e]));
@@ -83,4 +95,34 @@ export function isGpu(id: EffectId): boolean {
 export function gpuOf(id: EffectId): GpuEffect | null {
   const e = effect(id);
   return e.kind === 'gpu' ? e : null;
+}
+
+// ---- The effects grid, Photo-Booth style: 3×3 pages with Normal centered ----
+//
+// Each page is exactly 9 cells; index 4 (the centre) is always 'normal'. A cell
+// may be null (an empty slot on the extras page — room to grow). The Distort
+// page mirrors Photo Booth's distortion page layout exactly.
+
+export type PageCell = EffectId | null;
+export type EffectPage = { label: string; cells: PageCell[] };
+
+export const EFFECT_PAGES: EffectPage[] = [
+  {
+    label: 'Color',
+    cells: ['sepia', 'bw', 'glow', 'comic', 'normal', 'pencil', 'thermal', 'xray', 'pop'],
+  },
+  {
+    label: 'Distort',
+    cells: ['bulge', 'dent', 'twirl', 'squeeze', 'normal', 'mirror', 'tunnel', 'fisheye', 'stretch'],
+  },
+  {
+    label: 'PopStrip',
+    cells: [null, null, null, 'vintage', 'normal', null, null, null, null],
+  },
+];
+
+/** Index of the page that contains an effect (0 if not found — the Color page). */
+export function pageOfEffect(id: EffectId): number {
+  const i = EFFECT_PAGES.findIndex((p) => p.cells.includes(id));
+  return i >= 0 ? i : 0;
 }

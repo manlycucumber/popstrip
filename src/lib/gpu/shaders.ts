@@ -49,7 +49,7 @@ const BULGE = `void main(void) {
   vec2 c = p - 0.5;
   float A = uInputSize.x / uInputSize.y;         // aspect
   float r = length(vec2(c.x * A, c.y));
-  float S = uStrength * 0.5;
+  float S = uStrength * 0.6;
   float t = clamp(r / 0.62, 0.0, 1.0);
   float f = 1.0 - t;
   float scale = 1.0 - S * f * f;                 // <1 near centre = magnify
@@ -64,8 +64,8 @@ const DENT = `void main(void) {
   vec2 c = p - 0.5;
   float A = uInputSize.x / uInputSize.y;
   float r = length(vec2(c.x * A, c.y));
-  float S = -uStrength * 0.5;                     // negative = pinch
-  float t = clamp(r / 0.62, 0.0, 1.0);
+  float S = -uStrength * 1.1;                     // negative = pinch — deep, PB-strength
+  float t = clamp(r / 0.72, 0.0, 1.0);           // wider lens for a fuller dimple
   float f = 1.0 - t;
   float scale = 1.0 - S * f * f;
   vec2 wp = 0.5 + c * scale;
@@ -84,7 +84,7 @@ const TWIRL = `void main(void) {
   vec2 ca = vec2(c.x * A, c.y);
   float r = length(ca);
   float t = clamp(r / 0.62, 0.0, 1.0);
-  float ang = uStrength * 3.2 * (1.0 - t) * (1.0 - t);
+  float ang = uStrength * 4.2 * (1.0 - t) * (1.0 - t);
   float s = sin(ang), co = cos(ang);
   vec2 rc = vec2(ca.x * co - ca.y * s, ca.x * s + ca.y * co);
   rc.x /= A;
@@ -172,12 +172,110 @@ const XRAY = `void main(void) {
   finalColor = vec4(col, 1.0);
 }`;
 
+// Colored Pencil (≈ CILineOverlay): desaturate, draw Sobel strokes on a paper
+// tint. More strength = darker, tighter strokes over a stronger paper wash.
+const PENCIL = `void main(void) {
+  vec2 texel = uInputSize.zw * (max(uInputSize.x, uInputSize.y) / 720.0);
+  vec3 base = psSample(vTextureCoord);
+  float l = psLuma(base);
+  float tl = psLuma(psSample(vTextureCoord + texel * vec2(-1.0, -1.0)));
+  float ml = psLuma(psSample(vTextureCoord + texel * vec2(-1.0,  0.0)));
+  float bl = psLuma(psSample(vTextureCoord + texel * vec2(-1.0,  1.0)));
+  float tr = psLuma(psSample(vTextureCoord + texel * vec2( 1.0, -1.0)));
+  float mr = psLuma(psSample(vTextureCoord + texel * vec2( 1.0,  0.0)));
+  float br = psLuma(psSample(vTextureCoord + texel * vec2( 1.0,  1.0)));
+  float tc = psLuma(psSample(vTextureCoord + texel * vec2( 0.0, -1.0)));
+  float bc = psLuma(psSample(vTextureCoord + texel * vec2( 0.0,  1.0)));
+  float gx = (tr + 2.0 * mr + br) - (tl + 2.0 * ml + bl);
+  float gy = (bl + 2.0 * bc + br) - (tl + 2.0 * tc + tr);
+  float edge = sqrt(gx * gx + gy * gy);
+  float stroke = 1.0 - smoothstep(0.15, 0.15 + mix(0.9, 0.35, uStrength), edge);
+  vec3 muted = mix(vec3(l), base, 0.55);
+  vec3 paper = mix(muted, vec3(0.96, 0.95, 0.92), 0.35);
+  vec3 col = paper * stroke;
+  col = mix(base, col, clamp(uStrength + 0.35, 0.0, 1.0));
+  finalColor = vec4(col, 1.0);
+}`;
+
+// Squeeze (≈ CIPinchDistortion): pull samples inward across a broad region — a
+// soft pinch. Distinct from Dent (a tight, deep dimple) by radius + falloff.
+const SQUEEZE = `void main(void) {
+  vec2 lo = uInputClamp.xy, hi = uInputClamp.zw;
+  vec2 span = hi - lo;
+  vec2 p = (vTextureCoord - lo) / span;
+  vec2 c = p - 0.5;
+  float A = uInputSize.x / uInputSize.y;
+  vec2 ca = vec2(c.x * A, c.y);
+  float dist = length(ca);
+  float S = uStrength * 0.8;
+  float t = clamp(dist / 0.9, 0.0, 1.0);         // broad region (vs Dent's tight lens)
+  float f = 1.0 - t;
+  float percent = 1.0 + S * f;                    // >1 = pull samples inward (pinch)
+  vec2 wc = ca * percent;
+  wc.x /= A;
+  finalColor = vec4(psSample(lo + (0.5 + wc) * span), 1.0);
+}`;
+
+// Mirror: 2-fold kaleidoscope — reflect the left half onto the right about the
+// vertical centre axis (NOT a horizontal flip). Strength blends in the mirror.
+const MIRROR = `void main(void) {
+  vec2 lo = uInputClamp.xy, hi = uInputClamp.zw;
+  vec2 span = hi - lo;
+  vec2 p = (vTextureCoord - lo) / span;
+  float mx = 0.5 - abs(p.x - 0.5);                // fold both halves onto the left
+  vec2 wp = mix(p, vec2(mx, p.y), clamp(uStrength, 0.0, 1.0));
+  finalColor = vec4(psSample(lo + wp * span), 1.0);
+}`;
+
+// Fish Eye: whole-frame barrel bow. Unlike Bulge (a localized centre magnify
+// that zeroes out past its lens), this bends the entire frame — edges bow in.
+const FISHEYE = `void main(void) {
+  vec2 lo = uInputClamp.xy, hi = uInputClamp.zw;
+  vec2 span = hi - lo;
+  vec2 p = (vTextureCoord - lo) / span;
+  vec2 c = p - 0.5;
+  float A = uInputSize.x / uInputSize.y;
+  vec2 ca = vec2(c.x * A, c.y);
+  float r = length(ca);
+  float k = uStrength * 0.9;
+  float rn = r / 0.72;
+  float ff = 1.0 / (1.0 + k * rn * rn);           // pull inward across the whole frame
+  vec2 wc = ca * ff;
+  wc.x /= A;
+  finalColor = vec4(psSample(lo + (0.5 + wc) * span), 1.0);
+}`;
+
+// Stretch: anisotropic centre bump — magnify along x (widen) while gently
+// compressing y, so the centre of the face stretches sideways.
+const STRETCH = `void main(void) {
+  vec2 lo = uInputClamp.xy, hi = uInputClamp.zw;
+  vec2 span = hi - lo;
+  vec2 p = (vTextureCoord - lo) / span;
+  vec2 c = p - 0.5;
+  float A = uInputSize.x / uInputSize.y;
+  vec2 ca = vec2(c.x * A, c.y);
+  float r = length(ca);
+  float t = clamp(r / 0.7, 0.0, 1.0);
+  float f = (1.0 - t) * (1.0 - t);
+  float S = uStrength * 0.6;
+  float sx = 1.0 - S * f;                          // magnify x near centre (stretch wide)
+  float sy = 1.0 + 0.25 * S * f;                   // slight y compress
+  vec2 wc = vec2(ca.x * sx, ca.y * sy);
+  wc.x /= A;
+  finalColor = vec4(psSample(lo + (0.5 + wc) * span), 1.0);
+}`;
+
 export const FRAGMENTS: Record<import('../effects').ShaderId, string> = {
   bulge: BULGE,
   dent: DENT,
   twirl: TWIRL,
+  squeeze: SQUEEZE,
+  mirror: MIRROR,
   tunnel: TUNNEL,
+  fisheye: FISHEYE,
+  stretch: STRETCH,
   comic: COMIC,
   glow: GLOW,
   xray: XRAY,
+  pencil: PENCIL,
 };

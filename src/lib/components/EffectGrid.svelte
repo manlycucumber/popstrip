@@ -1,14 +1,14 @@
 <script lang="ts">
-  // The live effects grid: every effect shown on your live face at once.
-  //  • CSS effects → one live <video> per cell, CSS-filtered (cheap, exact
-  //    parity with the baked capture).
+  // The live effects grid, Photo-Booth style: 3×3 pages with Normal always in
+  // the centre, navigated by arrows + page dots.
+  //  • CSS effects (and Normal) → one live <video> per cell, CSS-filtered.
   //  • GPU effects → a single shared pixi renderer round-robins one cell per
-  //    animation frame into that cell's thumbnail <canvas>. One hidden <video>
-  //    feeds the renderer as the texture source, so we never open ~7 WebGL
-  //    contexts (browsers cap at a handful).
-  // If there's no WebGL, GPU effects are hidden entirely — the 6 CSS effects
-  // always work.
-  import { EFFECTS, gpuOf, type EffectId } from '../effects';
+  //    animation frame into that cell's thumbnail <canvas>, fed by the one
+  //    shared camera <video> (cameraVideo()). Only the *current page's* GPU
+  //    cells are rendered, so paging keeps the live-render count low.
+  // Without WebGL, pages that are all-GPU are dropped and any remaining GPU
+  // cells render as disabled placeholders; the CSS effects always work.
+  import { EFFECT_PAGES, effect as effectOf, gpuOf, type EffectId } from '../effects';
   import { settings, effectIntensity } from '../settings.svelte';
   import { cameraStream, cameraVideo } from '../camera.svelte';
   import { ensureGpu, renderLive, hasWebGL } from '../gpu/renderer';
@@ -16,8 +16,12 @@
   let { onPick }: { onPick: (id: EffectId) => void } = $props();
 
   const webgl = hasWebGL();
-  const effects = webgl ? EFFECTS : EFFECTS.filter((e) => e.kind === 'css');
-  const gpuCells = effects.filter((e) => e.kind === 'gpu');
+  const pages = webgl
+    ? EFFECT_PAGES
+    : EFFECT_PAGES.filter((pg) => pg.cells.some((id) => id && id !== 'normal' && effectOf(id).kind === 'css'));
+
+  // Open on the page that holds the active effect.
+  let page = $state(Math.max(0, pages.findIndex((pg) => pg.cells.includes(settings.effect))));
 
   const cellCanvas: Record<string, HTMLCanvasElement> = {};
 
@@ -48,7 +52,7 @@
   let rr = 0;
 
   async function startLoop(): Promise<void> {
-    if (running || gpuCells.length === 0) return;
+    if (running || !webgl) return;
     running = true;
     const ok = await ensureGpu();
     if (!ok) {
@@ -57,23 +61,26 @@
     }
     const tick = (): void => {
       if (!running) return;
-      const gpuSrc = cameraVideo();
-      if (gpuSrc && gpuSrc.videoWidth) {
-        const cell = gpuCells[rr % gpuCells.length];
-        rr++;
-        const g = gpuOf(cell.id);
-        const canvas = cellCanvas[cell.id];
-        if (g && canvas) {
-          const src = renderLive(gpuSrc, g.shaderId, effectIntensity(cell.id), settings.mirror);
-          if (src) {
-            const w = canvas.clientWidth || 160;
-            const h = canvas.clientHeight || 120;
-            if (canvas.width !== w || canvas.height !== h) {
-              canvas.width = w;
-              canvas.height = h;
+      const src = cameraVideo();
+      if (src && src.videoWidth) {
+        const gpuCells = pages[page].cells.filter((id): id is EffectId => !!id && !!gpuOf(id));
+        if (gpuCells.length) {
+          const id = gpuCells[rr % gpuCells.length];
+          rr++;
+          const g = gpuOf(id);
+          const canvas = cellCanvas[id];
+          if (g && canvas) {
+            const s = renderLive(src, g.shaderId, effectIntensity(id), settings.mirror);
+            if (s) {
+              const w = canvas.clientWidth || 150;
+              const h = canvas.clientHeight || 112;
+              if (canvas.width !== w || canvas.height !== h) {
+                canvas.width = w;
+                canvas.height = h;
+              }
+              const cx = canvas.getContext('2d');
+              if (cx) coverDraw(cx, s, w, h);
             }
-            const cx = canvas.getContext('2d');
-            if (cx) coverDraw(cx, src, w, h);
           }
         }
       }
@@ -90,25 +97,67 @@
       rafId = 0;
     };
   });
+
+  const canPrev = $derived(page > 0);
+  const canNext = $derived(page < pages.length - 1);
+  function go(delta: number): void {
+    page = Math.min(pages.length - 1, Math.max(0, page + delta));
+    rr = 0;
+  }
 </script>
 
 <div class="fxgrid" role="group" aria-label="Choose an effect">
-  {#each effects as eff (eff.id)}
-    <button
-      class="fxcell"
-      class:active={settings.effect === eff.id}
-      onclick={() => onPick(eff.id)}
-      aria-pressed={settings.effect === eff.id}
-      title={eff.label}
-    >
-      {#if eff.kind === 'gpu'}
-        <canvas bind:this={cellCanvas[eff.id]} class="fxvid"></canvas>
+  <div class="fxpage">
+    {#each pages[page].cells as cell, i (page + ':' + i)}
+      {#if cell === null}
+        <div class="fxcell empty" aria-hidden="true"></div>
       {:else}
-        <!-- svelte-ignore a11y_media_has_caption -->
-        <video use:attach class="fxvid" class:mirror={settings.mirror} style:filter={eff.css} autoplay playsinline muted
-        ></video>
+        {@const e = effectOf(cell)}
+        {#if e.kind === 'gpu' && !webgl}
+          <div class="fxcell disabled" title="{e.label} — needs WebGL">
+            <span class="fxname">{e.label}</span>
+            <span class="fxwebgl">needs WebGL</span>
+          </div>
+        {:else}
+          <button
+            class="fxcell"
+            class:active={settings.effect === cell}
+            onclick={() => onPick(cell)}
+            aria-pressed={settings.effect === cell}
+            title={e.label}
+          >
+            {#if e.kind === 'gpu'}
+              <canvas bind:this={cellCanvas[cell]} class="fxvid"></canvas>
+            {:else}
+              <!-- svelte-ignore a11y_media_has_caption -->
+              <video use:attach class="fxvid" class:mirror={settings.mirror} style:filter={e.css} autoplay playsinline muted
+              ></video>
+            {/if}
+            <span class="fxname">{e.label}</span>
+          </button>
+        {/if}
       {/if}
-      <span class="fxname">{eff.label}</span>
-    </button>
-  {/each}
+    {/each}
+  </div>
+
+  {#if pages.length > 1}
+    <div class="fxnav">
+      <button class="fxarrow" onclick={() => go(-1)} disabled={!canPrev} aria-label="Previous effects">‹</button>
+      <div class="fxdots">
+        {#each pages as pg, i (i)}
+          <button
+            class="fxdot"
+            class:on={i === page}
+            onclick={() => {
+              page = i;
+              rr = 0;
+            }}
+            aria-label="{pg.label} effects"
+            aria-current={i === page}
+          ></button>
+        {/each}
+      </div>
+      <button class="fxarrow" onclick={() => go(1)} disabled={!canNext} aria-label="More effects">›</button>
+    </div>
+  {/if}
 </div>

@@ -17,11 +17,13 @@ type Spec = {
   brand: number;
 };
 
-// Print sizes: strip = 2"×6", quad ≈ 4"×4.4", single ≈ 5"×4" — all at 300 DPI.
+// Print sizes at 300 DPI, with every photo cell at a 4:3 aspect (matching the
+// camera + preview → true WYSIWYG): single ≈ 5"×4.2", quad ≈ 4"×3.5",
+// strip ≈ 2"×6.3". Cell aspects: single 1440×1080, quad 561×421, strip 552×414.
 const SPECS: Record<Layout, Spec> = {
-  single: { w: 1500, h: 1220, cols: 1, rows: 1, margin: 30, gap: 0, footer: 130, radius: 16, brand: 50 },
-  quad: { w: 1200, h: 1320, cols: 2, rows: 2, margin: 30, gap: 18, footer: 140, radius: 16, brand: 48 },
-  strip: { w: 600, h: 1800, cols: 1, rows: 4, margin: 24, gap: 16, footer: 150, radius: 12, brand: 40 },
+  single: { w: 1500, h: 1270, cols: 1, rows: 1, margin: 30, gap: 0, footer: 130, radius: 16, brand: 50 },
+  quad: { w: 1200, h: 1060, cols: 2, rows: 2, margin: 30, gap: 18, footer: 140, radius: 16, brand: 48 },
+  strip: { w: 600, h: 1902, cols: 1, rows: 4, margin: 24, gap: 16, footer: 150, radius: 12, brand: 40 },
 };
 
 const INK = '#1a1626';
