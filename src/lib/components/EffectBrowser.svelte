@@ -13,6 +13,7 @@
   import { onMount } from 'svelte';
   import { browserCategories, effect as effectOf, gpuOf, type EffectId, type FlavorId } from '../effects';
   import { settings, effectIntensity, toggleFavorite } from '../settings.svelte';
+  import { BACKGROUNDS, sceneDataUri, fileToDataUrl } from '../backgrounds';
   import { cameraStream, cameraVideo } from '../camera.svelte';
   import { ensureGpu, renderLive, hasWebGL } from '../gpu/renderer';
 
@@ -171,6 +172,24 @@
   function jump(label: string): void {
     sectionEls[label]?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   }
+
+  // --- Backgrounds (green-screen) ------------------------------------------
+  const curBg = $derived(settings.background || 'none');
+  function pickBg(id: string): void {
+    settings.background = id; // stays open so a backdrop + effect can be combined
+  }
+  async function onUpload(e: Event): Promise<void> {
+    const input = e.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    try {
+      settings.customBackground = await fileToDataUrl(file, 1280);
+      settings.background = 'custom';
+    } catch {
+      /* unreadable image — ignore */
+    }
+  }
 </script>
 
 <div class="fxbrowser" role="group" aria-label="Choose an effect">
@@ -194,6 +213,46 @@
   {/if}
 
   <div class="fxb-scroll" bind:this={scrollRoot}>
+    {#if !query.trim()}
+      <section class="fxb-section">
+        <h3 class="fxb-h">Backgrounds <span class="fxb-h-note">green-screen · photos</span></h3>
+        <div class="fxb-grid fxb-bg-grid">
+          {#each BACKGROUNDS as bg (bg.id)}
+            <button
+              class="fxb-cell fxb-bgcell"
+              class:active={curBg === bg.id}
+              onclick={() => pickBg(bg.id)}
+              aria-pressed={curBg === bg.id}
+              title={bg.label}
+            >
+              {#if bg.id === 'none'}
+                <span class="fxb-bg-glyph">⦸</span>
+              {:else}
+                <img class="fxb-bg-thumb" src={sceneDataUri(bg.id)} alt={bg.label} />
+              {/if}
+              <span class="fxb-name">{bg.label}</span>
+            </button>
+          {/each}
+          {#if settings.customBackground}
+            <button
+              class="fxb-cell fxb-bgcell"
+              class:active={curBg === 'custom'}
+              onclick={() => pickBg('custom')}
+              aria-pressed={curBg === 'custom'}
+              title="Your image"
+            >
+              <img class="fxb-bg-thumb" src={settings.customBackground} alt="Your background" />
+              <span class="fxb-name">Yours</span>
+            </button>
+          {/if}
+          <label class="fxb-cell fxb-bgcell fxb-bgupload" title="Use your own image">
+            <span class="fxb-bg-glyph">＋</span>
+            <span class="fxb-name">Upload</span>
+            <input type="file" accept="image/*" onchange={onUpload} aria-label="Upload a background image" />
+          </label>
+        </div>
+      </section>
+    {/if}
     {#if !categories.length}
       <div class="fxb-empty">No effects match “{query}”.</div>
     {/if}

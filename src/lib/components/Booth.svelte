@@ -5,6 +5,8 @@
   import { ensureGpu, renderLive } from '../gpu/renderer';
   import { canRecord, MAX_CLIP_MS } from '../record';
   import { sampleGifFrame } from '../gif';
+  import { ensureSegmenter, segment, type Mask } from '../segment';
+  import { loadBackground, composite } from '../backgrounds';
   import Countdown from './Countdown.svelte';
   import Reel from './Reel.svelte';
   import EffectGrid from './EffectGrid.svelte';
@@ -73,12 +75,19 @@
   const movieMode = $derived(settings.mode === 'movie');
   const busy = $derived(capturing || recState !== 'idle');
 
+  // Green-screen (PopStrip flavor, photo modes): a chosen backdrop swaps the
+  // person onto a scene. Its own preview loop composites over the effect, so it
+  // joins the same mutual-exclusion as the others below.
+  const bgId = $derived(settings.flavor !== 'photobooth' ? settings.background || 'none' : 'none');
+  const bgOn = $derived(bgId !== 'none');
+  const bgActive = $derived(bgOn && camera.status === 'live' && !gridOpen && !movieMode);
+
   // Exactly one pixi renderer + one Sprite feed the whole app, so only ONE loop
-  // may call renderLive() per frame. These two deriveds are mutually exclusive
-  // by construction (movieMode splits them), and both yield to the grid, which
+  // may call renderLive() per frame. These deriveds are mutually exclusive by
+  // construction (movieMode / bgOn split them), and all yield to the grid, which
   // runs its own renderLive loop while open.
   const gpuPreviewActive = $derived(
-    gpuActive && camera.status === 'live' && !gridOpen && !movieMode,
+    gpuActive && camera.status === 'live' && !gridOpen && !movieMode && !bgOn,
   );
   const movieActive = $derived(movieMode && camera.status === 'live' && !gridOpen);
 
@@ -212,6 +221,161 @@
     };
   });
 
+  // --- Green-screen loop (photo modes, PopStrip flavor) -------------------
+  // Run the effect as usual, segment the raw feed at its own reduced cadence
+  // (reusing the last mask between — the 30fps-safety rule), and composite the
+  // cut-out person over the chosen backdrop in 2D. Compositing is off the pixi
+  // path, so for a GPU effect this loop's single renderLive() is the only
+  // consumer that frame — same one-consumer invariant as the loops above.
+  let bgCanvasEl = $state<HTMLCanvasElement | null>(null);
+  let bgGen = 0;
+  let bgCtx: CanvasRenderingContext2D | null = null;
+  let bgImg: HTMLImageElement | null = null;
+  let fgWork: HTMLCanvasElement | null = null;
+  let fgWorkCtx: CanvasRenderingContext2D | null = null;
+  let segInput: HTMLCanvasElement | null = null;
+  let segInputCtx: CanvasRenderingContext2D | null = null;
+  let lastMask: Mask | null = null;
+  let lastMaskAt = 0;
+  const MASK_INTERVAL_MS = 66; // ~15fps segmentation; frames in between reuse the last mask
+  const SEG_MAX = 320; // cap the live segmentation input — the mask is upsampled to the source size
+
+  // Keep the backdrop image loaded for the current id (async, cached).
+  $effect(() => {
+    const id = bgId;
+    const custom = settings.customBackground;
+    if (id === 'none') {
+      bgImg = null;
+      return;
+    }
+    let alive = true;
+    void loadBackground(id, custom).then((img) => {
+      if (alive && bgId === id) bgImg = img;
+    });
+    return () => {
+      alive = false;
+    };
+  });
+
+  function displaySize(vw: number, vh: number): [number, number] {
+    const scale = Math.min(1, 720 / Math.max(vw, vh));
+    return [Math.max(2, Math.round(vw * scale)), Math.max(2, Math.round(vh * scale))];
+  }
+
+  function paintGreenFrame(): void {
+    const canvas = bgCanvasEl;
+    if (!canvas || !video || !video.videoWidth) return;
+    const [dw, dh] = displaySize(video.videoWidth, video.videoHeight);
+
+    // 1) Effected, mirrored foreground (GPU via pixi, else CSS/normal in 2D).
+    const g = gpuOf(settings.effect);
+    const src = g ? renderLive(video, g.shaderId, effectIntensity(settings.effect), settings.mirror) : null;
+    let fg: CanvasImageSource;
+    let fw: number;
+    let fh: number;
+    if (g && src) {
+      fg = src;
+      fw = src.width;
+      fh = src.height;
+    } else {
+      if (!fgWork) {
+        fgWork = document.createElement('canvas');
+        fgWorkCtx = fgWork.getContext('2d');
+      }
+      if (fgWork.width !== dw || fgWork.height !== dh) {
+        fgWork.width = dw;
+        fgWork.height = dh;
+      }
+      const fx = fgWorkCtx;
+      if (!fx) return;
+      fx.save();
+      fx.filter = 'none';
+      if (settings.mirror) {
+        fx.translate(dw, 0);
+        fx.scale(-1, 1);
+      }
+      if (!g) fx.filter = effectCss(settings.effect); // CSS look; raw feed while pixi warms
+      fx.drawImage(video, 0, 0, dw, dh);
+      fx.restore();
+      fg = fgWork;
+      fw = dw;
+      fh = dh;
+    }
+
+    // 2) Segment at cadence; reuse the last mask between. Segment a downscaled
+    //    copy so a high-res webcam doesn't make huge masks 15×/sec (the mask is
+    //    scaled back up in composite) — capture segments full-res for quality.
+    const now = performance.now();
+    if (!lastMask || now - lastMaskAt >= MASK_INTERVAL_MS) {
+      const s = Math.min(1, SEG_MAX / Math.max(video.videoWidth, video.videoHeight));
+      const sw = Math.max(2, Math.round(video.videoWidth * s));
+      const sh = Math.max(2, Math.round(video.videoHeight * s));
+      if (!segInput) {
+        segInput = document.createElement('canvas');
+        segInputCtx = segInput.getContext('2d');
+      }
+      if (segInput.width !== sw || segInput.height !== sh) {
+        segInput.width = sw;
+        segInput.height = sh;
+      }
+      if (segInputCtx) {
+        segInputCtx.drawImage(video, 0, 0, sw, sh);
+        const m = segment(segInput, now);
+        if (m) {
+          lastMask = m;
+          lastMaskAt = now;
+        }
+      }
+    }
+
+    // 3) Composite onto the display canvas (sized to the foreground).
+    if (canvas.width !== fw || canvas.height !== fh) {
+      canvas.width = fw;
+      canvas.height = fh;
+      bgCtx = canvas.getContext('2d');
+    }
+    if (!bgCtx) bgCtx = canvas.getContext('2d');
+    if (!bgCtx) return;
+    if (lastMask) {
+      bgCtx.drawImage(composite(fg, fw, fh, lastMask, bgImg, settings.mirror, fw, fh), 0, 0);
+    } else {
+      bgCtx.drawImage(fg, 0, 0, fw, fh); // no mask yet — show the plain frame, no blank
+    }
+  }
+
+  async function startGreenLoop(gen: number): Promise<void> {
+    void ensureGpu(); // GPU effects still render through pixi
+    const ok = await ensureSegmenter();
+    if (gen !== bgGen) return;
+    if (!ok) {
+      // Segmentation unavailable in this browser — drop the backdrop gracefully.
+      fxToast = 'Backgrounds aren’t supported here';
+      clearTimeout(fxToastTimer);
+      fxToastTimer = setTimeout(() => (fxToast = null), 2000);
+      settings.background = 'none';
+      return;
+    }
+    const tick = (): void => {
+      if (gen !== bgGen) return;
+      paintGreenFrame();
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+
+  $effect(() => {
+    if (bgActive) {
+      const gen = ++bgGen;
+      void startGreenLoop(gen);
+    } else {
+      bgGen++;
+      lastMask = null;
+    }
+    return () => {
+      bgGen++;
+    };
+  });
+
   // --- UI helpers ----------------------------------------------------------
   function pick(id: EffectId): void {
     settings.effect = id;
@@ -247,13 +411,15 @@
   <video
     bind:this={video}
     class="feed"
-    class:mirror={settings.mirror && !gpuActive && !movieMode}
-    style:filter={gpuActive || movieMode ? 'none' : effectCss(settings.effect)}
+    class:mirror={settings.mirror && !gpuActive && !movieMode && !bgActive}
+    style:filter={gpuActive || movieMode || bgActive ? 'none' : effectCss(settings.effect)}
     autoplay
     playsinline
     muted
   ></video>
-  {#if movieMode}
+  {#if bgActive}
+    <canvas bind:this={bgCanvasEl} class="gpu-feed"></canvas>
+  {:else if movieMode}
     <canvas bind:this={movieCanvasEl} class="gpu-feed movie-feed" width={MOVIE_W} height={MOVIE_H}></canvas>
   {:else if gpuActive}
     <canvas bind:this={gpuCanvas} class="gpu-feed"></canvas>

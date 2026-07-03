@@ -24,6 +24,11 @@ type SettingsShape = {
   flavor?: FlavorId;
   // PopStrip-flavor pinned effects, shown first in the effect browser.
   favorites: EffectId[];
+  // Green-screen (PopStrip flavor): the chosen backdrop — 'none', a built-in
+  // scene id, or 'custom' (the user's uploaded image, held in customBackground
+  // as a downscaled on-device data URL). Applies to photos; movie support later.
+  background: string;
+  customBackground?: string;
 };
 
 const KEY = 'popstrip:settings';
@@ -60,6 +65,8 @@ export const settings = $state<SettingsShape>({
   effectIntensity: { ...(saved.effectIntensity ?? {}) },
   flavor: saved.flavor === 'photobooth' || saved.flavor === 'popstrip' ? saved.flavor : undefined,
   favorites: Array.isArray(saved.favorites) ? saved.favorites.filter(isEffectId) : [],
+  background: typeof saved.background === 'string' ? saved.background : 'none',
+  customBackground: typeof saved.customBackground === 'string' ? saved.customBackground : undefined,
 });
 
 /** Current intensity (0..1) for an effect, falling back to its registered default. */

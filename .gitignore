@@ -4,6 +4,10 @@ node_modules/
 # Build output
 dist/
 
+# Self-hosted MediaPipe WASM runtime — copied from node_modules at build time
+# (see scripts/copy-mediapipe-wasm.mjs); ~11 MB, not worth committing.
+public/mediapipe/wasm/
+
 # Local env & logs
 *.log
 .env

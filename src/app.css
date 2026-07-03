@@ -1764,6 +1764,44 @@ body {
   color: #141414;
 }
 
+/* Backgrounds (green-screen) tiles — reuse the effect-cell frame, but show a
+   scene image / glyph instead of a live effect preview. */
+.fxb-h-note {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--muted);
+  margin-left: 6px;
+}
+.fxb-bgcell {
+  background: #0a0812;
+  color: var(--text);
+  cursor: pointer;
+}
+.fxb-bg-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.fxb-bg-glyph {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  color: var(--muted);
+}
+.fxb-bgupload input[type='file'] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
 @media (max-width: 640px) {
   .fp-label {
     display: none;

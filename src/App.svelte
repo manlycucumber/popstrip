@@ -7,6 +7,8 @@
   import { compose } from './lib/strip';
   import { effectCss, gpuOf, isGpu } from './lib/effects';
   import { ensureGpu, hasWebGL } from './lib/gpu/renderer';
+  import { ensureSegmenter, segment } from './lib/segment';
+  import { loadBackground, composite } from './lib/backgrounds';
   import { createRecorder, acquireMic, stopMic, canRecord, MAX_CLIP_MS, type RecorderBackend } from './lib/record';
   import { resetGifFrames, gifFrameCount, gifFrameData, GIF_W, GIF_H, GIF_DELAY_MS } from './lib/gif';
   import { shutterClick, countdownBeep } from './lib/sound';
@@ -99,14 +101,32 @@
     countdown = null;
   }
 
-  function fireShutter(): HTMLCanvasElement {
+  /** The active green-screen backdrop id, or 'none' (only in the PopStrip flavor). */
+  function activeBackground(): string {
+    return settings.flavor !== 'photobooth' ? settings.background || 'none' : 'none';
+  }
+
+  async function fireShutter(): Promise<HTMLCanvasElement> {
     if (settings.sound) shutterClick();
     doFlash();
     const id = settings.effect;
     const g = gpuOf(id);
-    return g
+    // The effect + mirror bake in exactly as before; green-screen then composites
+    // the segmented person over the backdrop as a post-effect step.
+    const base = g
       ? grabGpuFrame(videoEl!, settings.mirror, g.shaderId, effectIntensity(id))
       : grabFrame(videoEl!, settings.mirror, effectCss(id));
+    const bgId = activeBackground();
+    if (bgId === 'none') return base;
+    try {
+      if (!(await ensureSegmenter())) return base;
+      const mask = segment(videoEl!, performance.now());
+      if (!mask) return base;
+      const bg = await loadBackground(bgId, settings.customBackground);
+      return composite(base, base.width, base.height, mask, bg, settings.mirror);
+    } catch {
+      return base; // segmentation is best-effort — never fail a capture over it
+    }
   }
 
   async function runCapture(): Promise<void> {
@@ -119,7 +139,7 @@
       if (retakeIndex !== null && frames) {
         await runCountdown(settings.countdown);
         if (aborted) return;
-        const next = fireShutter();
+        const next = await fireShutter();
         const updated = frames.slice();
         updated[retakeIndex] = next;
         const composed = await compose(updated, reviewLayout, { date: todayStr() });
@@ -141,7 +161,7 @@
       for (let i = 0; i < count; i++) {
         if (aborted) return;
         burst = count > 1 ? `${i + 1} / ${count}` : '';
-        shots.push(fireShutter());
+        shots.push(await fireShutter());
         if (i < count - 1) await delay(850);
       }
 
@@ -580,6 +600,8 @@
       settings.effectIntensity,
       settings.flavor,
       settings.favorites,
+      settings.background,
+      settings.customBackground,
     ];
     saveSettings();
   });

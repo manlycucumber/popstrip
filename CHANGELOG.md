@@ -5,7 +5,35 @@ Every version lands on `main`; `main` is always the deployment target for [popst
 
 ## [Unreleased]
 
-_Next: **v3.0.0** — add-ons: green-screen backdrops + AR face overlays (incl. the daughter's Dizzy Birds), all on-device. Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
+_Next toward **v3.0.0** (add-ons): **AR face overlays** — the daughter's Dizzy Birds (birds & hearts that track your head) — green screen in movie clips, plus face props, frames & themes, all on-device. Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
+
+## [2.1.0] — 2026-07-03 — Green screen 🟢
+
+Drop yourself onto a **beach, outer space, a sunset — or your own photo**. The
+PopStrip booth now replaces your background, entirely on your device.
+
+### Added
+
+- **Backgrounds** in the PopStrip effect browser: **None**, six built-in scenes
+  (Green screen, Sunset, Beach, Space, Studio, Party) and **Upload** your own
+  image. Pick one and it composites live in the booth and into your photos.
+- Backgrounds **stack with effects** — go Sepia on the beach, Comic Book in space.
+
+### How it works
+
+- **100% on-device.** Person segmentation runs locally via MediaPipe — the WASM
+  runtime and model are **self-hosted** (no CDN), so nothing is uploaded and it
+  works offline after first use. Your uploaded backgrounds stay on your device too.
+- **Lazy-loaded.** The segmentation engine downloads only the first time you pick a
+  background; the base app is unchanged, and photos taken without a background are
+  byte-for-byte identical.
+
+### Notes
+
+- Green screen applies to **photos** for now; **movie clips** are the next step.
+- Works in the **PopStrip** flavour — the faithful Photobooth stays Apple-exact.
+- Warps (Bulge, Twirl, …) distort geometry, so their silhouette edges against a
+  backdrop are approximate; colour and stylize effects line up cleanly.
 
 ## [2.0.0] — 2026-07-03 — Video, feature-complete 🎬
 
