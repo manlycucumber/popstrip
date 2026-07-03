@@ -5,7 +5,39 @@ Every version lands on `main`; `main` is always the deployment target for [popst
 
 ## [Unreleased]
 
-_Next: **v2.0.0** — video feature-complete (graduate the accumulated movie minors). Then add-ons (v3.0.0): green-screen backdrops + AR (incl. the daughter's Dizzy Birds). Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
+_Next: **v3.0.0** — add-ons: green-screen backdrops + AR face overlays (incl. the daughter's Dizzy Birds), all on-device. Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
+
+## [2.0.0] — 2026-07-03 — Video, feature-complete 🎬
+
+**Video is done.** What started as a single webm clip is now a complete capture
+mode standing alongside photos. This release graduates the accumulated movie work
+into a milestone major — the same way **v1.0.0** marked photos feature-complete.
+
+Nothing new to learn: **v2.0.0 is a graduation, not a new feature.** Every piece
+below already shipped and settled in its own minor; the major simply declares the
+video arc complete and stable.
+
+### The video story, now complete
+
+- **Movie clips** (from v1.2.0) — record with any effect baked in, optional mic, a
+  30-second cap; play back and save/share exactly like a photo, with a ▶ badge in
+  the reel. Built on PopStrip's unified effects canvas, so **the live preview is
+  precisely what records**.
+- **Real mp4 everywhere** (from v1.3.0) — H.264/AAC mp4 on every capable browser via
+  WebCodecs, so clips import straight into iOS Photos with accurate duration; webm
+  stays the universal fallback.
+- **GIF & boomerang** (from v1.6.0) — turn any clip into a looping animated GIF or a
+  forward-then-back boomerang, encoded on-device in a background worker.
+
+### Notes
+
+- **No capture code changed in this release.** Photos and clips are byte-for-byte
+  identical to v1.6.0; the bump to `2.0.0` is a stability milestone marking the whole
+  video feature set complete.
+- **Still 100% on-device** — camera, mic, photos, and clips never leave your machine.
+- **Next — v3.0.0, add-ons:** green-screen backdrops and AR face overlays (including
+  the long-requested _Dizzy Birds_), on-device via MediaPipe. Same nothing-uploaded
+  promise.
 
 ## [1.6.0] — 2026-07-03 — GIF & boomerang 🎞️
 
