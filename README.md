@@ -1,6 +1,6 @@
 # PopStrip 📸
 
-**A free, fun photo booth right in your browser.** A faithful, modern take on Apple Photo Booth — snap photos with retro effects. Everything runs on your device; **nothing is ever uploaded.**
+**A free, fun photo booth right in your browser.** A faithful, modern take on Apple Photo Booth — snap photos and record movie clips with retro effects. Everything runs on your device; **nothing is ever uploaded.**
 
 Live at **[popstrip.app](https://popstrip.app)**.
 
@@ -11,11 +11,12 @@ Open it, smile, grab a photo. PopStrip is a static, client-side web app: your ca
 - 📷 Live camera preview + one-tap capture (Spacebar works too)
 - ⏱️ Countdown → flash → shutter, with the iconic **2×2 quad burst** and print-ready photostrips
 - 🎨 **The full Photo Booth effect set** — colour (Sepia, Black & White, Pop Art, Thermal Camera, …), **shader stylize** (Comic Book, Glow, X-Ray, Colored Pencil) and **funhouse warps** (Bulge, Dent, Twirl, Squeeze, Mirror, Light Tunnel, Fish Eye, Stretch), each with a strength dial — chosen from a **paged 3×3 grid** and baked into every shot
-- 🎞️ A **photo reel** of your recent shots, kept on your device
+- 🎬 **Movie mode** — record a clip with any effect baked in (and optional sound), then save or share it; **mp4/GIF for every browser is next**
+- 🎞️ A **reel** of your recent photos and clips, kept on your device
 - 💾 Save to a folder, share to your apps, or copy — all local
 - 🕹️ 90s-web look with **Light & Dark** modes; works on desktop & mobile
 - 📲 **Installable PWA** — add it to your home screen and it works offline
-- 🎬 Video is next — see the [Roadmap](ROADMAP.md)
+- 🗺️ What's next — see the [Roadmap](ROADMAP.md)
 
 ## Develop
 

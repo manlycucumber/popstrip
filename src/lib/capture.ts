@@ -17,6 +17,10 @@ export type Shot = {
   width: number;
   height: number;
   kind: Layout;
+  // Discriminates a still photo from a movie clip. Orthogonal to `kind` (a
+  // clip is nominally `kind:'single'`); drives whether Review shows an <img>
+  // or a <video>, and whether the reel thumbnails an image or a video frame.
+  media: 'photo' | 'video';
   createdAt: number;
 };
 

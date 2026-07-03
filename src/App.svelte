@@ -1,12 +1,13 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { settings, saveSettings, toggleTheme, effectIntensity } from './lib/settings.svelte';
+  import { settings, saveSettings, toggleTheme, effectIntensity, type CaptureMode } from './lib/settings.svelte';
   import { camera, startCamera, switchCamera, bindVideo } from './lib/camera.svelte';
   import { detectSupport } from './lib/support';
   import { grabFrame, grabGpuFrame, type Layout, type Shot } from './lib/capture';
   import { compose } from './lib/strip';
   import { effectCss, gpuOf, isGpu } from './lib/effects';
   import { ensureGpu, hasWebGL } from './lib/gpu/renderer';
+  import { ClipRecorder, acquireMic, stopMic, canRecord, MAX_CLIP_MS } from './lib/record';
   import { shutterClick, countdownBeep } from './lib/sound';
   import { celebrate } from './lib/confetti';
   import { reel, loadReel, addCapture } from './lib/history.svelte';
@@ -33,6 +34,17 @@
   let reviewLayout = $state<Layout>('quad');
   let retakeIndex = $state<number | null>(null);
   let aborted = false;
+
+  // Movie recording state. `recState` drives the record button + control locks;
+  // the rest are plumbing kept out of the reactive graph.
+  let recState = $state<'idle' | 'countdown' | 'recording'>('idle');
+  let recMs = $state(0);
+  let movieCanvas: HTMLCanvasElement | null = null;
+  let recorder: ClipRecorder | null = null;
+  let recStream: MediaStream | null = null;
+  let recStartAt = 0;
+  let maxTimer: ReturnType<typeof setTimeout> | undefined;
+  let recTicker: ReturnType<typeof setInterval> | undefined;
 
   const currentDeviceLabel = $derived(
     camera.devices.find((d) => d.deviceId === camera.deviceId)?.label || 'Camera',
@@ -63,6 +75,10 @@
     bindVideo(el);
   }
 
+  function registerMovieCanvas(el: HTMLCanvasElement): void {
+    movieCanvas = el;
+  }
+
   async function runCountdown(seconds: number): Promise<void> {
     for (let n = seconds; n >= 1; n--) {
       if (aborted) return;
@@ -84,6 +100,7 @@
   }
 
   async function runCapture(): Promise<void> {
+    if (settings.mode === 'movie') return; // movie mode records instead of shooting
     if (capturing || camera.status !== 'live' || !videoEl) return;
     capturing = true;
     aborted = false;
@@ -160,6 +177,170 @@
     screen = 'booth';
   }
 
+  // ---- Movie recording ---------------------------------------------------
+
+  function stopRecTicker(): void {
+    clearInterval(recTicker);
+    recTicker = undefined;
+  }
+  function clearMaxTimer(): void {
+    clearTimeout(maxTimer);
+    maxTimer = undefined;
+  }
+
+  /** Release recorder, mic, capture stream and timers. Safe from any exit path. */
+  function teardownRecording(): void {
+    clearMaxTimer();
+    stopRecTicker();
+    stopMic();
+    if (recStream) {
+      for (const t of recStream.getTracks()) t.stop();
+      recStream = null;
+    }
+    recorder = null;
+    recState = 'idle';
+    recMs = 0;
+  }
+
+  // Wait until the camera has a real frame so captureStream never records blank
+  // opening frames. The movie loop is already painting the canvas continuously.
+  function waitForFrame(): Promise<void> {
+    return new Promise((resolve) => {
+      const check = (): void => {
+        if (aborted || (videoEl && videoEl.videoWidth > 0 && movieCanvas && movieCanvas.width > 0)) resolve();
+        else requestAnimationFrame(check);
+      };
+      requestAnimationFrame(check);
+    });
+  }
+
+  async function startRecording(): Promise<void> {
+    if (recState !== 'idle' || camera.status !== 'live' || !movieCanvas || !videoEl) return;
+    recState = 'countdown';
+    aborted = false;
+
+    // 1. Mic BEFORE the countdown — else its permission prompt stalls "3…2…1".
+    let micTracks: MediaStreamTrack[] = [];
+    if (settings.mic) {
+      try {
+        micTracks = await acquireMic();
+      } catch {
+        showToast('Recording without mic — permission denied');
+      }
+    }
+    if (aborted || camera.status !== 'live') {
+      stopMic();
+      recState = 'idle';
+      countdown = null;
+      return;
+    }
+
+    // 2. Countdown (Esc cancels).
+    await runCountdown(settings.countdown);
+    if (aborted || camera.status !== 'live') {
+      stopMic();
+      recState = 'idle';
+      countdown = null;
+      return;
+    }
+
+    // 3. Start once the canvas is genuinely painting.
+    await waitForFrame();
+    if (aborted || camera.status !== 'live') {
+      stopMic();
+      recState = 'idle';
+      return;
+    }
+
+    try {
+      recStream = movieCanvas.captureStream(30);
+      const vTrack = recStream.getVideoTracks()[0];
+      if (!vTrack) throw new Error('no video track');
+      recorder = new ClipRecorder();
+      recorder.start(vTrack, micTracks);
+      recState = 'recording';
+      recStartAt = performance.now();
+      recMs = 0;
+      if (settings.sound) countdownBeep(true); // "we're rolling" cue
+      recTicker = setInterval(() => {
+        recMs = performance.now() - recStartAt;
+      }, 200);
+      maxTimer = setTimeout(() => {
+        showToast('Max length reached');
+        void stopRecording(true);
+      }, MAX_CLIP_MS);
+    } catch {
+      teardownRecording();
+      showToast('Could not start recording.');
+    }
+  }
+
+  async function stopRecording(keep: boolean): Promise<void> {
+    const rec = recorder;
+    if (!rec || recState !== 'recording') return;
+    recorder = null; // synchronous re-entry guard against racing stop paths
+    clearMaxTimer();
+    stopRecTicker();
+
+    let blob: Blob | null = null;
+    try {
+      blob = await rec.stop();
+    } catch {
+      /* keep whatever we can */
+    }
+
+    stopMic();
+    if (recStream) {
+      for (const t of recStream.getTracks()) t.stop();
+      recStream = null;
+    }
+    recState = 'idle';
+    recMs = 0;
+
+    if (!keep || !blob || blob.size === 0) {
+      if (!keep) showToast('Clip discarded');
+      return;
+    }
+
+    const url = URL.createObjectURL(blob);
+    if (shot) URL.revokeObjectURL(shot.url);
+    frames = null;
+    retakeIndex = null;
+    reviewLayout = 'single';
+    shot = {
+      blob,
+      url,
+      width: movieCanvas?.width ?? 960,
+      height: movieCanvas?.height ?? 720,
+      kind: 'single',
+      media: 'video',
+      createdAt: Date.now(),
+    };
+    screen = 'review';
+    void addCapture(shot);
+    celebrate();
+  }
+
+  function onRecordButton(): void {
+    if (settings.mode !== 'movie') return;
+    if (recState === 'idle') void startRecording();
+    else if (recState === 'countdown') aborted = true; // cancel the countdown
+    else if (recState === 'recording') void stopRecording(true);
+  }
+
+  function onDiscardRecord(): void {
+    if (recState === 'recording') void stopRecording(false);
+  }
+
+  function onVisibility(): void {
+    // Hidden tabs throttle rAF → the canvas freezes; stop-and-keep so the clip
+    // isn't a frozen frame with a runaway duration.
+    if (document.hidden && recState === 'recording') {
+      showToast('Recording stopped — tab hidden');
+      void stopRecording(true);
+    }
+  }
+
   function openReelItem(id: number): void {
     const item = reel.items.find((it) => it.id === id);
     if (!item) return;
@@ -173,6 +354,7 @@
       width: item.w,
       height: item.h,
       kind: item.kind,
+      media: item.media ?? 'photo',
       createdAt: item.createdAt,
     };
     screen = 'review';
@@ -183,8 +365,9 @@
     if (id) void switchCamera(id);
   }
 
-  function setMode(mode: 'single' | 'quad'): void {
-    if (!capturing) settings.mode = mode;
+  function setMode(mode: CaptureMode): void {
+    if (capturing || recState !== 'idle') return;
+    settings.mode = mode;
   }
 
   function cycleCountdown(): void {
@@ -202,16 +385,29 @@
   }
 
   function onKey(e: KeyboardEvent): void {
-    if (e.code === 'Escape' && capturing) {
-      e.preventDefault();
-      aborted = true;
+    if (e.code === 'Escape') {
+      // In fullscreen, let Esc exit fullscreen — don't also stop a recording.
+      if (document.fullscreenElement) return;
+      if (recState === 'recording') {
+        e.preventDefault();
+        void stopRecording(true); // stop-and-keep; discard is the explicit ✕
+        return;
+      }
+      if (recState === 'countdown' || capturing) {
+        e.preventDefault();
+        aborted = true;
+      }
       return;
     }
-    if (e.code !== 'Space' || screen !== 'booth' || camera.status !== 'live' || capturing) return;
+    if (e.code !== 'Space' || screen !== 'booth' || camera.status !== 'live') return;
     const t = e.target as HTMLElement | null;
     if (t && ['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(t.tagName)) return;
     e.preventDefault();
-    void runCapture();
+    if (settings.mode === 'movie') {
+      onRecordButton();
+    } else if (!capturing) {
+      void runCapture();
+    }
   }
 
   function onFsChange(): void {
@@ -221,6 +417,8 @@
   onMount(() => {
     // A GPU effect saved on a WebGL machine can't render without WebGL — fall back.
     if (isGpu(settings.effect) && !hasWebGL()) settings.effect = 'normal';
+    // Likewise, don't boot into Movie mode where recording isn't supported.
+    if (settings.mode === 'movie' && !canRecord()) settings.mode = 'quad';
     if (!support.secureContext) {
       camera.status = 'error';
       camera.error = 'insecure';
@@ -233,10 +431,22 @@
     void loadReel();
     window.addEventListener('keydown', onKey);
     document.addEventListener('fullscreenchange', onFsChange);
+    document.addEventListener('visibilitychange', onVisibility);
     return () => {
       window.removeEventListener('keydown', onKey);
       document.removeEventListener('fullscreenchange', onFsChange);
+      document.removeEventListener('visibilitychange', onVisibility);
+      teardownRecording();
     };
+  });
+
+  // If the camera drops during a movie flow, don't film a dead device: abort an
+  // in-flight countdown, and stop-and-keep an active recording.
+  $effect(() => {
+    if (camera.status === 'error' && recState !== 'idle') {
+      aborted = true; // short-circuits a pending runCountdown / waitForFrame
+      if (recState === 'recording') void stopRecording(true);
+    }
   });
 
   // Warm the GPU effects chunk (dynamic-import pixi) once the camera is live, so
@@ -257,6 +467,7 @@
       settings.sound,
       settings.flash,
       settings.mode,
+      settings.mic,
       settings.countdown,
       settings.effect,
       settings.effectIntensity,
@@ -288,7 +499,7 @@
       🎥 <span>{currentDeviceLabel}</span>
       {#if camera.devices.length > 1}▾{/if}
       {#if camera.devices.length > 1}
-        <select value={camera.deviceId} onchange={onDeviceChange} aria-label="Choose camera">
+        <select value={camera.deviceId} onchange={onDeviceChange} aria-label="Choose camera" disabled={recState !== 'idle' || capturing}>
           {#each camera.devices as device, i (device.deviceId)}
             <option value={device.deviceId}>{device.label || `Camera ${i + 1}`}</option>
           {/each}
@@ -305,6 +516,7 @@
       <button
         class="tool wide"
         onclick={cycleCountdown}
+        disabled={recState !== 'idle'}
         title="Countdown timer (before the shutter)"
         aria-label="Change countdown timer"
       >
@@ -313,6 +525,7 @@
       <button
         class="tool"
         onclick={() => (settings.mirror = !settings.mirror)}
+        disabled={recState !== 'idle'}
         aria-pressed={settings.mirror}
         title="Mirror preview"
         aria-label="Toggle mirror"
@@ -372,10 +585,15 @@
           {countdown}
           {burst}
           hint={retakeHint}
+          {recState}
+          {recMs}
           onCapture={runCapture}
           onMode={setMode}
           onOpenReel={openReelItem}
           {registerVideo}
+          {registerMovieCanvas}
+          {onRecordButton}
+          {onDiscardRecord}
         />
       </div>
     {/if}

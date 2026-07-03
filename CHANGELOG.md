@@ -5,7 +5,41 @@ Every version lands on `main`; `main` is always the deployment target for [popst
 
 ## [Unreleased]
 
-_Next up is v2.0.0 (video: movie clips, then mp4 & GIF/boomerang). Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
+_Next up is v1.3.0 (mp4 for every browser via WebCodecs + mp4-muxer, then GIF/boomerang), on the way to v2.0.0 (video feature-complete). Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
+
+## [1.2.0] — 2026-07-03 — Movie clips 🎬
+
+The first slice of video: record a movie clip with any effect baked in, right in
+the browser — nothing uploaded.
+
+### Added
+
+- **Movie mode** — a third capture mode beside Single and 4-up. Pick it, hit
+  record, and PopStrip films your live effect (colour, shader, or warp) into a
+  clip. The same countdown leads in; press **Stop** (Space or Esc also work)
+  when you're done, or it caps at 30 seconds. **✕ Discard** throws a take away.
+- **Optional microphone** — movies record with sound by default, with a mic
+  toggle. The mic is opened only while you're actually recording and released
+  the instant you stop — it never lingers.
+- **Video review + reel** — finished clips play right in the review screen and
+  can be **Saved** or **Shared** like any photo; recent clips join the bottom
+  reel with a ▶ badge.
+
+### Changed
+
+- Movie mode introduces PopStrip's **unified effects canvas** — one surface that
+  is both the live preview and exactly what gets recorded, so a clip is WYSIWYG
+  just like a photo. Every clip carries a subtle PopStrip mark + date.
+
+### Notes
+
+- Clips record as **mp4 (H.264)** where the browser supports it — Safari, and
+  Chrome/Edge with a hardware encoder — otherwise **webm (VP9/VP8)**; nothing
+  extra to download. Broadening mp4 to every browser (so clips import into iOS
+  Photos) and adding **GIF / boomerang** is next (v1.3.0), on the way to video
+  feature-complete (v2.0.0).
+- Recording needs a browser with `MediaRecorder` + canvas capture. Where it's
+  unavailable, Movie mode is hidden and photos work exactly as before.
 
 ## [1.1.0] — 2026-07-03 — Photo Booth fidelity
 

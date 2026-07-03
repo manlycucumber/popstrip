@@ -4,7 +4,7 @@
 import { isEffectId, gpuOf, type EffectId } from './effects';
 
 export type Theme = 'light' | 'dark';
-export type CaptureMode = 'single' | 'quad';
+export type CaptureMode = 'single' | 'quad' | 'movie';
 
 type SettingsShape = {
   theme: Theme;
@@ -12,6 +12,7 @@ type SettingsShape = {
   sound: boolean;
   flash: boolean;
   mode: CaptureMode;
+  mic: boolean; // record movie clips with the microphone
   countdown: number; // seconds before the shutter fires; 0 = off
   effect: EffectId;
   // Per-effect intensity (normalized 0..1) for GPU effects; missing keys fall
@@ -47,7 +48,8 @@ export const settings = $state<SettingsShape>({
   mirror: saved.mirror ?? true,
   sound: saved.sound ?? true,
   flash: saved.flash ?? true,
-  mode: saved.mode === 'single' ? 'single' : 'quad',
+  mode: saved.mode === 'single' || saved.mode === 'movie' ? saved.mode : 'quad',
+  mic: saved.mic ?? true,
   countdown: COUNTDOWNS.includes(saved.countdown as number) ? (saved.countdown as number) : 3,
   effect: isEffectId(saved.effect) ? saved.effect : 'normal',
   effectIntensity: { ...(saved.effectIntensity ?? {}) },

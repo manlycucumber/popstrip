@@ -1103,3 +1103,147 @@ body {
     display: none;
   }
 }
+
+/* ---------------- Movie mode ---------------- */
+
+/* The recording canvas overlays the <video> just like the GPU preview; a black
+   ground keeps any letterboxing clean. */
+.movie-feed {
+  background: #000;
+}
+
+/* REC badge over the feed (mirrors .live, but recording-red). */
+.recstate {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  background: rgba(20, 10, 25, 0.62);
+  color: #fff;
+  padding: 4px 9px;
+  border-radius: 4px;
+}
+.recdot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff3b3b;
+  box-shadow: 0 0 8px #ff3b3b;
+  animation: recpulse 1.1s ease-in-out infinite;
+}
+.rectime {
+  opacity: 0.85;
+  font-variant-numeric: tabular-nums;
+}
+@keyframes recpulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* Record / stop control — sits in the dock's centre column like the shutter. */
+.rec-wrap {
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.recbtn {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 0;
+  background: var(--panel-2);
+  display: grid;
+  place-items: center;
+  box-shadow: inset 2px 2px 0 var(--bevel-lt), inset -2px -2px 0 var(--bevel-dk), 0 0 0 3px var(--edge),
+    0 0 0 6px var(--panel-2);
+  transition: transform 0.1s, box-shadow 0.15s;
+}
+.recbtn:hover {
+  transform: scale(1.04);
+}
+.recbtn:active {
+  transform: scale(0.93);
+}
+.recbtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+.recbtn.on {
+  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.2), 0 0 0 3px #ff3b3b, 0 0 0 6px var(--panel-2),
+    0 0 22px -4px #ff3b3b;
+}
+.recmark {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #ff3b3b;
+  box-shadow: 0 0 10px -2px #ff3b3b;
+  transition: width 0.15s, height 0.15s, border-radius 0.15s;
+}
+.recmark.sq {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+}
+.recbtn.counting .recmark {
+  animation: recpulse 0.85s ease-in-out infinite;
+}
+.rec-discard {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 0;
+  cursor: pointer;
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: inset 1.5px 1.5px 0 var(--bevel-lt), inset -1.5px -1.5px 0 var(--bevel-dk), 0 0 0 1px var(--edge);
+}
+.rec-discard:hover {
+  color: var(--accent);
+}
+
+/* Mic toggle borrows the effect button; "muted" reads as off. */
+.fx-btn.mic.muted {
+  background: var(--panel-2);
+  color: var(--muted);
+}
+
+/* A movie in the reel gets a play badge; in review it's a <video> player. */
+.reel-item .tag.play {
+  background: rgba(255, 46, 136, 0.85);
+}
+.photo video {
+  display: block;
+  max-height: min(58vh, 460px);
+  max-width: 100%;
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recdot,
+  .recbtn.counting .recmark {
+    animation: none;
+    opacity: 1;
+  }
+}
+@media (max-width: 640px) {
+  .photo video {
+    max-height: 42vh;
+  }
+}

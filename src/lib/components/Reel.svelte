@@ -10,12 +10,16 @@
 </script>
 
 {#if reel.items.length}
-  <div class="reel" aria-label="Recent photos">
+  <div class="reel" aria-label="Recent captures">
     {#each reel.items as item (item.id)}
       <div class="reel-item">
-        <button class="reel-open" onclick={() => onOpen(item.id)} title="Open this photo" aria-label="Open a recent photo">
+        <button class="reel-open" onclick={() => onOpen(item.id)} title="Open this capture" aria-label="Open a recent capture">
           <img src={item.thumbUrl} alt="A recent PopStrip capture" />
-          {#if badge(item.kind)}<span class="tag">{badge(item.kind)}</span>{/if}
+          {#if item.media === 'video'}
+            <span class="tag play">▶</span>
+          {:else if badge(item.kind)}
+            <span class="tag">{badge(item.kind)}</span>
+          {/if}
         </button>
         <button class="reel-del" onclick={() => removeCapture(item.id)} title="Remove from reel" aria-label="Remove from reel">✕</button>
       </div>

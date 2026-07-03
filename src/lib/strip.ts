@@ -134,5 +134,13 @@ export async function compose(
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not render the photo.'))), 'image/png');
   });
 
-  return { blob, url: URL.createObjectURL(blob), width: spec.w, height: spec.h, kind: layout, createdAt: Date.now() };
+  return {
+    blob,
+    url: URL.createObjectURL(blob),
+    width: spec.w,
+    height: spec.h,
+    kind: layout,
+    media: 'photo',
+    createdAt: Date.now(),
+  };
 }

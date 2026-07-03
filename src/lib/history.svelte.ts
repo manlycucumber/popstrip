@@ -16,6 +16,7 @@ type Row = {
   kind: Layout;
   w: number;
   h: number;
+  media?: 'photo' | 'video'; // absent on rows written before v1.2.0 → photo
   createdAt: number;
 };
 
@@ -27,6 +28,7 @@ export type ReelEntry = {
   kind: Layout;
   w: number;
   h: number;
+  media: 'photo' | 'video';
   createdAt: number;
 };
 
@@ -54,23 +56,85 @@ function toEntry(row: Row & { id: number }): ReelEntry {
     kind: row.kind,
     w: row.w,
     h: row.h,
+    media: row.media ?? 'photo',
     createdAt: row.createdAt,
   };
 }
 
-async function makeThumb(blob: Blob): Promise<Blob> {
-  const bmp = await createImageBitmap(blob);
-  const tw = 220;
-  const th = Math.max(1, Math.round((tw * bmp.height) / bmp.width));
-  const canvas = document.createElement('canvas');
-  canvas.width = tw;
-  canvas.height = th;
-  const ctx = canvas.getContext('2d');
-  if (ctx) ctx.drawImage(bmp, 0, 0, tw, th);
-  bmp.close?.();
-  return await new Promise<Blob>((resolve, reject) => {
+const THUMB_W = 220;
+
+function canvasToJpeg(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('thumb'))), 'image/jpeg', 0.82);
   });
+}
+
+async function makeImageThumb(blob: Blob): Promise<Blob> {
+  const bmp = await createImageBitmap(blob);
+  const th = Math.max(1, Math.round((THUMB_W * bmp.height) / bmp.width));
+  const canvas = document.createElement('canvas');
+  canvas.width = THUMB_W;
+  canvas.height = th;
+  const ctx = canvas.getContext('2d');
+  if (ctx) ctx.drawImage(bmp, 0, 0, THUMB_W, th);
+  bmp.close?.();
+  return canvasToJpeg(canvas);
+}
+
+// A poster frame off a video blob: createImageBitmap throws on video, so seek a
+// detached <video> to just past the start (frame 0 may be undecoded) and grab
+// it. A timeout guarantees we never hang the reel if `seeked` never fires; the
+// element is torn down either way so no decoder lingers.
+async function makeVideoThumb(blob: Blob): Promise<Blob> {
+  const url = URL.createObjectURL(blob);
+  const v = document.createElement('video');
+  v.muted = true;
+  v.playsInline = true;
+  v.preload = 'metadata';
+  v.src = url;
+  try {
+    await new Promise<void>((resolve) => {
+      let done = false;
+      const finish = (): void => {
+        if (!done) {
+          done = true;
+          resolve();
+        }
+      };
+      v.addEventListener('loadeddata', () => {
+        try {
+          v.currentTime = Math.min(0.1, (v.duration || 1) / 2);
+        } catch {
+          finish();
+        }
+      });
+      v.addEventListener('seeked', finish);
+      v.addEventListener('error', finish);
+      setTimeout(finish, 1500);
+    });
+    const vw = v.videoWidth || 4;
+    const vh = v.videoHeight || 3;
+    const th = Math.max(1, Math.round((THUMB_W * vh) / vw));
+    const canvas = document.createElement('canvas');
+    canvas.width = THUMB_W;
+    canvas.height = th;
+    const ctx = canvas.getContext('2d');
+    if (ctx && v.videoWidth) {
+      ctx.drawImage(v, 0, 0, THUMB_W, th);
+    } else if (ctx) {
+      ctx.fillStyle = '#1a1626';
+      ctx.fillRect(0, 0, THUMB_W, th);
+    }
+    return await canvasToJpeg(canvas);
+  } finally {
+    v.src = '';
+    v.load();
+    URL.revokeObjectURL(url);
+  }
+}
+
+function makeThumb(blob: Blob, media: 'photo' | 'video'): Promise<Blob> {
+  return media === 'video' ? makeVideoThumb(blob) : makeImageThumb(blob);
 }
 
 /** Hydrate the reel from IndexedDB (newest first). Safe to call once on load. */
@@ -95,13 +159,14 @@ export async function loadReel(): Promise<void> {
 /** Store a fresh capture and prepend it to the reel, evicting the oldest. */
 export async function addCapture(shot: Shot): Promise<void> {
   try {
-    const thumb = await makeThumb(shot.blob);
+    const thumb = await makeThumb(shot.blob, shot.media);
     const row: Row = {
       blob: shot.blob,
       thumb,
       kind: shot.kind,
       w: shot.width,
       h: shot.height,
+      media: shot.media,
       createdAt: shot.createdAt,
     };
     const db = await openDb();

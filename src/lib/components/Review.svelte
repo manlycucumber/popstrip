@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Layout, Shot } from '../capture';
   import { timestampName } from '../capture';
+  import { extForMime } from '../record';
   import { canUseFolder, saveToFolder, downloadBlob } from '../save';
   import { canShareFile, shareFile, canCopyImage, copyImage } from '../share';
 
@@ -25,24 +26,28 @@
   let busy = $state(false);
   const folder = canUseFolder();
   const copyable = canCopyImage();
-  const shareable = $derived(canShareFile(shot.blob, 'popstrip.png'));
-  const isQuad = $derived(shot.kind === 'quad' || shot.kind === 'strip');
+  const isVideo = $derived(shot.media === 'video');
+  const ext = $derived(isVideo ? extForMime(shot.blob.type) : 'png');
+  const shareable = $derived(canShareFile(shot.blob, `popstrip.${ext}`));
+  // A movie clip is nominally kind:'single', so relayout/redo only apply to photos.
+  const isQuad = $derived(!isVideo && (shot.kind === 'quad' || shot.kind === 'strip'));
 
   async function save(): Promise<void> {
     if (busy) return;
     busy = true;
-    const name = timestampName();
+    const name = timestampName(ext);
+    const doneMsg = isVideo ? '✓ Movie downloaded' : '✓ Photo downloaded';
     try {
       if (folder) {
         const result = await saveToFolder(shot.blob, name);
         onToast(result === 'saved' ? '✓ Saved to your folder' : 'Save cancelled');
       } else {
         downloadBlob(shot.blob, name);
-        onToast('✓ Photo downloaded');
+        onToast(doneMsg);
       }
     } catch {
       downloadBlob(shot.blob, name);
-      onToast('✓ Photo downloaded');
+      onToast(doneMsg);
     } finally {
       busy = false;
     }
@@ -52,7 +57,7 @@
     if (busy) return;
     busy = true;
     try {
-      const result = await shareFile(shot.blob, timestampName());
+      const result = await shareFile(shot.blob, timestampName(ext));
       if (result === 'unsupported') onToast('Sharing isn’t available in this browser');
     } catch {
       onToast('Couldn’t open the share sheet');
@@ -71,13 +76,18 @@
 </script>
 
 <div class="review-body">
-  <div class="photo bare" class:strip={shot.kind === 'strip'}>
-    <img src={shot.url} alt="Your latest PopStrip capture" />
+  <div class="photo bare" class:strip={shot.kind === 'strip'} class:video={isVideo}>
+    {#if isVideo}
+      <!-- svelte-ignore a11y_media_has_caption -->
+      <video src={shot.url} controls autoplay playsinline></video>
+    {:else}
+      <img src={shot.url} alt="Your latest PopStrip capture" />
+    {/if}
   </div>
 
   <div class="review-actions">
-    <h2>Looks great!</h2>
-    <p>Your photo is ready. Everything stayed on your device.</p>
+    <h2>{isVideo ? 'Nice clip!' : 'Looks great!'}</h2>
+    <p>Your {isVideo ? 'movie' : 'photo'} is ready. Everything stayed on your device.</p>
 
     {#if canEdit && isQuad}
       <div class="layouts" role="group" aria-label="Layout">
@@ -102,7 +112,7 @@
 
     <button class="act primary" onclick={save} disabled={busy}>
       <span class="ic">💾</span>
-      <span>Save<small>{folder ? 'to your PopStrip folder' : 'download the photo'}</small></span>
+      <span>Save<small>{folder ? 'to your PopStrip folder' : isVideo ? 'download the movie' : 'download the photo'}</small></span>
     </button>
 
     {#if shareable}
@@ -112,7 +122,7 @@
       </button>
     {/if}
 
-    {#if copyable}
+    {#if copyable && !isVideo}
       <button class="act" onclick={copy} disabled={busy}>
         <span class="ic">📋</span>
         <span>Copy<small>to the clipboard</small></span>
@@ -121,7 +131,7 @@
 
     <button class="act" onclick={onRetake} disabled={busy}>
       <span class="ic">↺</span>
-      <span>{isQuad ? 'New set' : 'Retake'}<small>back to the booth</small></span>
+      <span>{isVideo ? 'New clip' : isQuad ? 'New set' : 'Retake'}<small>back to the booth</small></span>
     </button>
   </div>
 </div>
