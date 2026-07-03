@@ -5,7 +5,35 @@ Every version lands on `main`; `main` is always the deployment target for [popst
 
 ## [Unreleased]
 
-_Nothing pending — next up is v1.0.0 (funhouse warps + shader stylize → photos feature-complete)._
+_Nothing pending — next up is v2.0.0 (video: movie clips, then mp4 & GIF/boomerang)._
+
+## [1.0.0] — 2026-07-02 — Warps + shader stylize → photos feature-complete 🎉
+
+The version where PopStrip becomes a full Photo Booth for photos: funhouse warps and
+shader effects, GPU-accelerated with pixi.js, live and baked identically into every shot.
+
+### Added
+
+- **Funhouse warps** — **Bulge**, **Dent**, **Twirl**, and **Light Tunnel**: real-time
+  WebGL distortions of your live face, each with an adjustable strength.
+- **Shader stylize** — **Comic Book** (posterized + inked edges), **Dreamy Glow** (soft
+  bloom), and **X-Ray** (cold inverted luminance).
+- **Effect-strength slider** — a chunky dial next to the effect button, shown for warps
+  and shader effects; each effect remembers its own sweet spot.
+- **Bigger live effects grid** — the ✨ grid now shows all 13 effects on your live face at
+  once (it scrolls), and picks the one you tap. GPU effects share a single renderer so
+  the grid stays smooth.
+- **Install PopStrip** — it's now a PWA: add it to your home screen or desktop and it
+  **works offline** after the first visit, with a proper app icon.
+
+### Notes
+
+- GPU effects use pixi.js v8 (WebGL). pixi is **lazy-loaded** only when a GPU effect is
+  first used, so the app still starts as a tiny bundle and the six colour effects need
+  nothing extra. On devices without WebGL, the GPU effects are hidden and the colour
+  effects work as before.
+- What you see live is what gets saved: the same shader and strength are baked into single
+  shots, 4-up quads, and strips at full camera resolution.
 
 ## [0.3.0] — 2026-07-02 — Color effects + live grid
 

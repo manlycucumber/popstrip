@@ -1,11 +1,12 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { settings, saveSettings, toggleTheme } from './lib/settings.svelte';
+  import { settings, saveSettings, toggleTheme, effectIntensity } from './lib/settings.svelte';
   import { camera, startCamera, switchCamera, bindVideo } from './lib/camera.svelte';
   import { detectSupport } from './lib/support';
-  import { grabFrame, type Layout, type Shot } from './lib/capture';
+  import { grabFrame, grabGpuFrame, type Layout, type Shot } from './lib/capture';
   import { compose } from './lib/strip';
-  import { effectCss } from './lib/effects';
+  import { effectCss, gpuOf, isGpu } from './lib/effects';
+  import { ensureGpu, hasWebGL } from './lib/gpu/renderer';
   import { shutterClick, countdownBeep } from './lib/sound';
   import { celebrate } from './lib/confetti';
   import { reel, loadReel, addCapture } from './lib/history.svelte';
@@ -75,7 +76,11 @@
   function fireShutter(): HTMLCanvasElement {
     if (settings.sound) shutterClick();
     doFlash();
-    return grabFrame(videoEl!, settings.mirror, effectCss(settings.effect));
+    const id = settings.effect;
+    const g = gpuOf(id);
+    return g
+      ? grabGpuFrame(videoEl!, settings.mirror, g.shaderId, effectIntensity(id))
+      : grabFrame(videoEl!, settings.mirror, effectCss(id));
   }
 
   async function runCapture(): Promise<void> {
@@ -214,6 +219,8 @@
   }
 
   onMount(() => {
+    // A GPU effect saved on a WebGL machine can't render without WebGL — fall back.
+    if (isGpu(settings.effect) && !hasWebGL()) settings.effect = 'normal';
     if (!support.secureContext) {
       camera.status = 'error';
       camera.error = 'insecure';
@@ -232,6 +239,16 @@
     };
   });
 
+  // Warm the GPU effects chunk (dynamic-import pixi) once the camera is live, so
+  // the first time a warp/stylize effect is picked it renders instantly.
+  let gpuWarmed = false;
+  $effect(() => {
+    if (camera.status === 'live' && !gpuWarmed && hasWebGL()) {
+      gpuWarmed = true;
+      void ensureGpu();
+    }
+  });
+
   // Persist settings whenever they change.
   $effect(() => {
     void [
@@ -242,6 +259,7 @@
       settings.mode,
       settings.countdown,
       settings.effect,
+      settings.effectIntensity,
     ];
     saveSettings();
   });

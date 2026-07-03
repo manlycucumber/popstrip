@@ -53,6 +53,11 @@ export function cameraStream(): MediaStream | null {
   return stream;
 }
 
+/** The main preview <video> element, so the GPU renderer binds one shared source. */
+export function cameraVideo(): HTMLVideoElement | null {
+  return videoEl;
+}
+
 function mapError(e: unknown): CameraError {
   const name = e instanceof DOMException ? e.name : '';
   switch (name) {

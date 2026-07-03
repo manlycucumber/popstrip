@@ -1,6 +1,13 @@
 // Grabbing frames off the live camera. Mirroring is baked in here so a captured
 // frame matches the mirrored preview the user was looking at. Frames are kept as
 // canvases so a burst of them can be composed into a layout (see strip.ts).
+//
+// Two capture paths, both returning a full-frame HTMLCanvasElement that flows
+// unchanged into compose(): CSS effects bake via ctx.filter here (grabFrame);
+// GPU effects render through pixi (grabGpuFrame → gpu/renderer.capture).
+
+import { capture as gpuCapture } from './gpu/renderer';
+import type { ShaderId } from './effects';
 
 export type Layout = 'single' | 'quad' | 'strip';
 
@@ -36,6 +43,20 @@ export function grabFrame(video: HTMLVideoElement, mirror: boolean, filter = 'no
   if (filter && filter !== 'none') ctx.filter = filter;
   ctx.drawImage(video, 0, 0, width, height);
   return canvas;
+}
+
+/**
+ * Grab a frame with a GPU (pixi shader) effect baked in, at the camera's native
+ * resolution and mirrored to match the preview. Returns the same full-frame
+ * canvas shape as grabFrame, so the burst/compose pipeline is identical.
+ */
+export function grabGpuFrame(
+  video: HTMLVideoElement,
+  mirror: boolean,
+  shaderId: ShaderId,
+  intensity: number,
+): HTMLCanvasElement {
+  return gpuCapture(video, shaderId, intensity, mirror);
 }
 
 export function timestampName(ext = 'png'): string {

@@ -21,6 +21,11 @@ AddType application/wasm .wasm
   <FilesMatch "\.(html|webmanifest)$">
     Header set Cache-Control "no-cache"
   </FilesMatch>
+  # The service worker itself must always revalidate (it's a .js file, but the
+  # immutable rule above must not apply) so updated builds ship promptly.
+  <Files "sw.js">
+    Header set Cache-Control "no-cache"
+  </Files>
 </IfModule>
 
 # Belt-and-suspenders: gzip text assets if mod_deflate is available.
