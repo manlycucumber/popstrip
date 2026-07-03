@@ -4,6 +4,7 @@
   import { effectCss, effectLabel, isGpu, gpuOf, type EffectId } from '../effects';
   import { ensureGpu, renderLive } from '../gpu/renderer';
   import { canRecord, MAX_CLIP_MS } from '../record';
+  import { sampleGifFrame } from '../gif';
   import Countdown from './Countdown.svelte';
   import Reel from './Reel.svelte';
   import EffectGrid from './EffectGrid.svelte';
@@ -182,6 +183,11 @@
       coverDraw(ctx, video, video.videoWidth, video.videoHeight, W, H);
     }
     ctx.restore();
+
+    // While recording, tap the just-painted frame for a possible GIF/boomerang
+    // export. Reads this same canvas (no extra renderLive consumer); the sampler
+    // downscales + rate-limits internally, so this is cheap every frame.
+    if (recState === 'recording') sampleGifFrame(canvas, performance.now());
   }
 
   async function startMovieLoop(gen: number): Promise<void> {

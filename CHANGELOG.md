@@ -5,7 +5,30 @@ Every version lands on `main`; `main` is always the deployment target for [popst
 
 ## [Unreleased]
 
-_Next: **v1.6.0** — GIF & boomerang exports, on the way to v2.0.0 (video feature-complete). Then add-ons (v3.0.0): green-screen backdrops + AR. Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
+_Next: **v2.0.0** — video feature-complete (graduate the accumulated movie minors). Then add-ons (v3.0.0): green-screen backdrops + AR (incl. the daughter's Dizzy Birds). Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
+
+## [1.6.0] — 2026-07-03 — GIF & boomerang 🎞️
+
+Turn a movie clip into a shareable **animated GIF** — or a **boomerang** that plays
+forward then back — right from the review screen. Nothing leaves your device: the
+frames are sampled off the same effects canvas you recorded and encoded on-device
+in a background worker.
+
+### Added
+
+- **GIF** and **Boomerang** buttons on a movie clip's review — one tap turns the
+  clip into a looping animation you can Save or Share like any photo.
+- Both capture the **first ~6 seconds** at ~15 fps and loop forever; the boomerang
+  plays forward then back for that classic ping-pong.
+
+### Notes
+
+- **Encoding runs in a Web Worker** ([gifenc](https://github.com/mattdesl/gifenc)),
+  off the main thread, so the booth stays responsive. The encoder is **lazy-loaded**
+  — it's fetched only the first time you export, and the base download is unchanged.
+- Frames are sampled from the **same effects canvas the clip was recorded from**, so
+  the GIF carries whatever effect you filmed with. Photos & video clips are unchanged.
+- Record once, try **both** — GIF and boomerang come from the same take.
 
 ## [1.5.0] — 2026-07-03 — Two booth flavours 🎚️
 

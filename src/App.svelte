@@ -8,6 +8,7 @@
   import { effectCss, gpuOf, isGpu } from './lib/effects';
   import { ensureGpu, hasWebGL } from './lib/gpu/renderer';
   import { createRecorder, acquireMic, stopMic, canRecord, MAX_CLIP_MS, type RecorderBackend } from './lib/record';
+  import { resetGifFrames, gifFrameCount, gifFrameData, GIF_W, GIF_H, GIF_DELAY_MS } from './lib/gif';
   import { shutterClick, countdownBeep } from './lib/sound';
   import { celebrate } from './lib/confetti';
   import { reel, loadReel, addCapture } from './lib/history.svelte';
@@ -48,6 +49,12 @@
   let recStartAt = 0;
   let maxTimer: ReturnType<typeof setTimeout> | undefined;
   let recTicker: ReturnType<typeof setInterval> | undefined;
+
+  // GIF/boomerang: the just-recorded clip's sampled frames (in lib/gif) can be
+  // encoded on demand from Review. `gifReady` gates those buttons — true only
+  // while the frames belong to the clip currently under review.
+  let gifReady = $state(false);
+  let gifWorker: Worker | null = null;
 
   const currentDeviceLabel = $derived(
     camera.devices.find((d) => d.deviceId === camera.deviceId)?.label || 'Camera',
@@ -177,6 +184,8 @@
   function retake(): void {
     retakeIndex = null;
     frames = null;
+    resetGifFrames(); // leaving the clip → free its sampled frames
+    gifReady = false;
     screen = 'booth';
   }
 
@@ -278,6 +287,8 @@
         teardownRecording();
         return;
       }
+      resetGifFrames(); // fresh buffer for this clip's GIF/boomerang sampling
+      gifReady = false;
       recState = 'recording';
       recStartAt = performance.now();
       recMs = 0;
@@ -330,6 +341,8 @@
     recMs = 0;
 
     if (!keep || !blob || blob.size === 0) {
+      resetGifFrames(); // nothing to keep → free the sampled frames
+      gifReady = false;
       if (!keep) showToast('Clip discarded');
       return;
     }
@@ -348,9 +361,68 @@
       media: 'video',
       createdAt: Date.now(),
     };
+    // The sampler captured the first ~6s of this clip; offer GIF/boomerang.
+    gifReady = gifFrameCount() > 0;
     screen = 'review';
     void addCapture(shot);
     celebrate();
+  }
+
+  // ---- GIF / boomerang export --------------------------------------------
+
+  function ensureGifWorker(): Worker {
+    if (!gifWorker) {
+      gifWorker = new Worker(new URL('./lib/gif.worker.ts', import.meta.url), { type: 'module' });
+    }
+    return gifWorker;
+  }
+
+  /** Encode the just-recorded clip's frames into an animated GIF (or boomerang)
+   *  in a worker, then swap the review over to the result so it can be saved. */
+  async function exportGif(boomerang: boolean): Promise<void> {
+    if (!gifReady || gifFrameCount() === 0) return;
+    let worker: Worker;
+    try {
+      worker = ensureGifWorker();
+    } catch {
+      showToast('GIF export isn’t supported here');
+      return;
+    }
+    showToast(boomerang ? 'Making boomerang…' : 'Making GIF…');
+    // Not transferred — a copy is sent so the frames survive for the other
+    // variant (record once, try GIF *and* boomerang).
+    const data = gifFrameData();
+    try {
+      const buffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+        const cleanup = (): void => {
+          worker.removeEventListener('message', onMsg);
+          worker.removeEventListener('error', onErr);
+        };
+        const onMsg = (e: MessageEvent): void => {
+          cleanup();
+          resolve((e.data as { buffer: ArrayBuffer }).buffer);
+        };
+        const onErr = (e: ErrorEvent): void => {
+          cleanup();
+          reject(e.error ?? new Error('GIF encode failed'));
+        };
+        worker.addEventListener('message', onMsg);
+        worker.addEventListener('error', onErr);
+        worker.postMessage({ width: GIF_W, height: GIF_H, delay: GIF_DELAY_MS, boomerang, frames: data });
+      });
+      if (buffer.byteLength === 0) throw new Error('empty gif');
+      const blob = new Blob([buffer], { type: 'image/gif' });
+      const url = URL.createObjectURL(blob);
+      if (shot) URL.revokeObjectURL(shot.url);
+      frames = null;
+      retakeIndex = null;
+      reviewLayout = 'single';
+      shot = { blob, url, width: GIF_W, height: GIF_H, kind: 'single', media: 'photo', createdAt: Date.now() };
+      void addCapture(shot);
+      showToast(boomerang ? '✓ Boomerang ready' : '✓ GIF ready');
+    } catch {
+      showToast('Couldn’t make the GIF');
+    }
   }
 
   function onRecordButton(): void {
@@ -378,6 +450,8 @@
     if (!item) return;
     if (shot) URL.revokeObjectURL(shot.url);
     frames = null;
+    resetGifFrames(); // a reel item has no live sampled frames
+    gifReady = false;
     retakeIndex = null;
     reviewLayout = item.kind;
     shot = {
@@ -469,6 +543,7 @@
       document.removeEventListener('fullscreenchange', onFsChange);
       document.removeEventListener('visibilitychange', onVisibility);
       teardownRecording();
+      gifWorker?.terminate();
     };
   });
 
@@ -579,10 +654,12 @@
           <Review
             {shot}
             canEdit={!!frames}
+            canGif={gifReady}
             currentLayout={reviewLayout}
             onRetake={retake}
             onRetakeCell={retakeCell}
             onRelayout={relayout}
+            onExportGif={exportGif}
             onToast={showToast}
           />
         </Modal>

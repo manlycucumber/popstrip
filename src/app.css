@@ -932,6 +932,21 @@ body {
   cursor: not-allowed;
 }
 
+/* GIF / boomerang export (movie review) — a stacked label + two chips, reusing
+   the .chip look from the layout switcher. */
+.giffer {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+}
+.giffer-row {
+  display: flex;
+  gap: 6px;
+}
+.giffer .chip:hover:not(:disabled) {
+  color: var(--accent);
+}
+
 /* Wide toolbar button (countdown timer) */
 .tool.wide {
   width: auto;

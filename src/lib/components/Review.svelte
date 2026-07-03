@@ -8,18 +8,22 @@
   let {
     shot,
     canEdit,
+    canGif,
     currentLayout,
     onRetake,
     onRetakeCell,
     onRelayout,
+    onExportGif,
     onToast,
   }: {
     shot: Shot;
     canEdit: boolean;
+    canGif: boolean;
     currentLayout: Layout;
     onRetake: () => void;
     onRetakeCell: (index: number) => void;
     onRelayout: (layout: Layout) => void;
+    onExportGif: (boomerang: boolean) => void | Promise<void>;
     onToast: (message: string) => void;
   } = $props();
 
@@ -28,7 +32,8 @@
   const folder = canUseFolder();
   const copyable = canCopyImage();
   const isVideo = $derived(shot.media === 'video');
-  const ext = $derived(isVideo ? extForMime(shot.blob.type) : 'png');
+  const isGif = $derived(shot.blob.type === 'image/gif');
+  const ext = $derived(isVideo ? extForMime(shot.blob.type) : isGif ? 'gif' : 'png');
   const shareable = $derived(canShareFile(shot.blob, `popstrip.${ext}`));
   // A movie clip is nominally kind:'single', so relayout/redo only apply to photos.
   const isQuad = $derived(!isVideo && (shot.kind === 'quad' || shot.kind === 'strip'));
@@ -37,7 +42,7 @@
     if (busy) return;
     busy = true;
     const name = timestampName(ext);
-    const doneMsg = isVideo ? '✓ Movie downloaded' : '✓ Photo downloaded';
+    const doneMsg = isVideo ? '✓ Movie downloaded' : isGif ? '✓ GIF downloaded' : '✓ Photo downloaded';
     try {
       if (folder) {
         const result = await saveToFolder(shot.blob, name);
@@ -77,6 +82,17 @@
     onToast(ok ? '✓ Copied to clipboard' : 'Copy isn’t available here');
     busy = false;
   }
+
+  async function makeGif(boomerang: boolean): Promise<void> {
+    if (busy) return;
+    busy = true;
+    saved = false; // it's a new artefact — Save applies to the GIF now
+    try {
+      await onExportGif(boomerang);
+    } finally {
+      busy = false;
+    }
+  }
 </script>
 
 <div class="review-body">
@@ -90,8 +106,32 @@
   </div>
 
   <div class="review-actions">
-    <h2>{isVideo ? 'Nice clip!' : 'Looks great!'}</h2>
-    <p>Your {isVideo ? 'movie' : 'photo'} is ready. Everything stayed on your device.</p>
+    <h2>{isGif ? 'Boom!' : isVideo ? 'Nice clip!' : 'Looks great!'}</h2>
+    <p>Your {isGif ? 'GIF' : isVideo ? 'movie' : 'photo'} is ready. Everything stayed on your device.</p>
+
+    {#if canGif}
+      <div class="layouts giffer" role="group" aria-label="Turn this clip into an animation">
+        <span class="cr-label">Make an animation</span>
+        <div class="giffer-row">
+          <button
+            class="chip"
+            onclick={() => makeGif(false)}
+            disabled={busy}
+            title="Animated GIF — the first ~6 seconds, looping"
+          >
+            🎞️ GIF
+          </button>
+          <button
+            class="chip"
+            onclick={() => makeGif(true)}
+            disabled={busy}
+            title="Boomerang — plays forward, then back, on a loop"
+          >
+            🔁 Boomerang
+          </button>
+        </div>
+      </div>
+    {/if}
 
     {#if canEdit && isQuad}
       <div class="layouts" role="group" aria-label="Layout">
@@ -138,7 +178,7 @@
       </button>
     {/if}
 
-    {#if copyable && !isVideo}
+    {#if copyable && !isVideo && !isGif}
       <button class="act" onclick={copy} disabled={busy}>
         <span class="ic">📋</span>
         <span>Copy<small>to the clipboard</small></span>
@@ -147,7 +187,7 @@
 
     <button class="act" onclick={onRetake} disabled={busy}>
       <span class="ic">↺</span>
-      <span>{isVideo ? 'New clip' : isQuad ? 'New set' : 'Retake'}<small>back to the booth</small></span>
+      <span>{isVideo || isGif ? 'New clip' : isQuad ? 'New set' : 'Retake'}<small>back to the booth</small></span>
     </button>
   </div>
 </div>
