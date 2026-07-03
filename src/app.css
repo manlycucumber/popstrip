@@ -10,7 +10,7 @@ body {
   height: 100%;
 }
 body {
-  font-family: Verdana, Geneva, Tahoma, 'DejaVu Sans', sans-serif;
+  font-family: Arial, Helvetica, 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
@@ -18,49 +18,83 @@ body {
   height: 100dvh;
 }
 
-/* ---------------- Theme tokens ---------------- */
+/* ---------------- Theme tokens (authentic-90s) ----------------
+   Sharp corners, heavy flat outlines, hard offset shadows, bold flat
+   web-safe color. Legacy names kept as aliases so existing rules recolor:
+   --accent → red, --accent2 → cyan, --purple → blue. Legacy inset bevels are
+   flattened to a clean edge by making --bevel-lt/dk transparent. */
 .app {
-  --accent: #ff2e88;
-  --accent2: #00c2d6;
-  --yellow: #ffcc00;
-  --purple: #9b5de5;
-  --radius: 8px;
-  --font: Verdana, Geneva, Tahoma, 'DejaVu Sans', sans-serif;
-  --mono: 'Courier New', 'Lucida Console', monospace;
+  --red: #e5202b; /* brand accent (was pink) */
+  --accent: #e5202b;
+  --accent2: #12cfda;
+  --yellow: #ffd21e;
+  --cyan: #12cfda;
+  --blue: #2b34d6;
+  --lime: #8fd92e;
+  --purple: #2b34d6; /* alias → blue */
+  --radius: 0;
+  --font: Arial, Helvetica, 'Helvetica Neue', sans-serif;
+  --display: Impact, Haettenschweiler, 'Arial Narrow Bold', 'Arial Black', sans-serif;
+  --mono: 'Courier New', Courier, monospace;
 
   height: 100dvh;
   display: flex;
   flex-direction: column;
   color: var(--text);
-  background: var(--win);
+  /* the whole app is a red-tiled "desktop"; bars + centered content sit on it */
+  background-color: var(--win);
+  background-image:
+    linear-gradient(45deg, rgba(0, 0, 0, 0.09) 25%, transparent 25% 75%, rgba(0, 0, 0, 0.09) 75%),
+    linear-gradient(45deg, rgba(0, 0, 0, 0.09) 25%, transparent 25% 75%, rgba(0, 0, 0, 0.09) 75%);
+  background-size: 30px 30px;
+  background-position: 0 0, 15px 15px;
   font-family: var(--font);
 }
 
 .app[data-mode='light'] {
-  --win: #cbc9d6;
-  --panel: #d6d4e0;
-  --panel-2: #edecf3;
+  --win: #e5202b;
+  --panel: #eceae0;
+  --panel-2: #f2efe6;
   --canvas: #ffffff;
-  --text: #1a1626;
-  --muted: #625c72;
-  --edge: #1a1626;
-  --bevel-lt: #ffffff;
-  --bevel-dk: #918da3;
-  --reel: #1a1626;
+  --text: #141414;
+  --muted: #55524a;
+  --edge: #141414;
+  --shadow: #141414;
+  --bevel-lt: transparent;
+  --bevel-dk: transparent;
+  --reel: #141414;
   --frame: #ffffff;
 }
 .app[data-mode='dark'] {
-  --win: #17142a;
-  --panel: #211d3a;
-  --panel-2: #2b2548;
-  --canvas: #120f22;
-  --text: #f1ecff;
-  --muted: #a79ecb;
-  --edge: #0a0814;
-  --bevel-lt: rgba(255, 255, 255, 0.1);
-  --bevel-dk: #0a0814;
-  --reel: #0d0a1a;
+  --win: #b81a22;
+  --panel: #26232e;
+  --panel-2: #322f3c;
+  --canvas: #322f3c;
+  --text: #f3f0e6;
+  --muted: #b3aec2;
+  --edge: #f3f0e6;
+  --shadow: #000000;
+  --bevel-lt: transparent;
+  --bevel-dk: transparent;
+  --reel: #17141d;
   --frame: #f4f1ff;
+}
+
+/* Kill all rounded rectangles; re-round only genuine circles. */
+.app *,
+.app *::before,
+.app *::after {
+  border-radius: 0 !important;
+}
+.app .shutter,
+.app .shutter .ring,
+.app .recbtn,
+.app .recmark:not(.sq),
+.app .recdot,
+.app .fxdot,
+.app .reel-del,
+.app .live::before {
+  border-radius: 50% !important;
 }
 
 /* ---------------- Title bar ---------------- */
@@ -72,36 +106,47 @@ body {
   color: #fff;
   position: relative;
   overflow: hidden;
-  background: linear-gradient(90deg, var(--accent), var(--purple));
+  background: repeating-linear-gradient(135deg, var(--red) 0 15px, #ff5a52 15px 30px);
   border-bottom: 2px solid var(--edge);
   flex: 0 0 auto;
 }
 .titlebar::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.18;
-  background: radial-gradient(rgba(255, 255, 255, 0.9) 1px, transparent 1.4px) 0 0 / 7px 7px;
+  content: none;
 }
 .wordmark {
   display: flex;
   align-items: center;
   gap: 9px;
-  font-weight: 700;
-  font-size: 16px;
-  letter-spacing: -0.01em;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 22px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
   position: relative;
   z-index: 1;
-  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.35);
+  color: #fff;
+  text-shadow: 2px 2px 0 #141414;
 }
 .wordmark .lens {
-  width: 21px;
-  height: 21px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 34% 32%, #dff3ff 0 3px, #3a3f4a 4px 7px, #14161a 8px 11px);
-  box-shadow: 0 0 0 2px #fff, 1px 1px 0 rgba(0, 0, 0, 0.4);
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border: 2px solid #141414;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35);
+  position: relative;
   flex: 0 0 auto;
+}
+.wordmark .lens::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  background: #141414;
+}
+.wordmark .lens::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  background: var(--cyan);
 }
 .titlebar .spacer {
   flex: 1 1 auto;
@@ -199,7 +244,7 @@ body {
   position: relative;
   flex: 1 1 auto;
   overflow: hidden;
-  background: var(--panel);
+  background: transparent; /* show the red-tiled desktop behind the centered content */
   min-height: 0;
 }
 .screen {
@@ -307,9 +352,8 @@ body {
   transition: background 0.12s, color 0.12s;
 }
 .modes button[aria-pressed='true'] {
-  background: var(--canvas);
-  color: var(--text);
-  box-shadow: inset 1.5px 1.5px 0 var(--bevel-lt), inset -1.5px -1.5px 0 var(--bevel-dk);
+  background: var(--blue);
+  color: #fff;
 }
 .modes button:disabled {
   opacity: 0.45;
@@ -327,23 +371,23 @@ body {
 
 .shutter {
   justify-self: center;
-  width: 70px;
-  height: 70px;
-  border-radius: 50%;
+  width: 64px;
+  height: 64px;
   cursor: pointer;
-  border: 0;
-  background: radial-gradient(circle at 38% 34%, #ff6aae, var(--accent) 60%);
+  border: 3px solid var(--edge);
+  background: var(--red);
   display: grid;
   place-items: center;
-  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.55), inset -2px -2px 0 rgba(0, 0, 0, 0.28),
-    0 0 0 3px var(--edge), 0 0 0 6px var(--panel-2), 0 0 22px -4px var(--accent);
-  transition: transform 0.1s;
+  box-shadow: 4px 4px 0 var(--shadow);
+  transition: transform 0.1s, box-shadow 0.12s;
 }
 .shutter:hover {
-  transform: scale(1.04);
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 var(--shadow);
 }
 .shutter:active {
-  transform: scale(0.93);
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--shadow);
 }
 .shutter:disabled {
   opacity: 0.5;
@@ -364,19 +408,23 @@ body {
   gap: 8px;
   font: inherit;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
+  text-transform: uppercase;
   cursor: pointer;
-  padding: 10px 15px;
-  border-radius: 6px;
-  color: var(--text);
-  background: var(--yellow);
-  border: 0;
-  box-shadow: inset 1.5px 1.5px 0 rgba(255, 255, 255, 0.6), inset -1.5px -1.5px 0 rgba(0, 0, 0, 0.22),
-    0 0 0 1px var(--edge);
-  transition: transform 0.1s;
+  padding: 9px 14px;
+  color: #141414;
+  background: var(--cyan);
+  border: 2px solid var(--edge);
+  box-shadow: 3px 3px 0 var(--shadow);
+  transition: transform 0.1s, box-shadow 0.12s;
 }
 .fx-btn:hover {
-  transform: translateY(-1px);
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--shadow);
+}
+.fx-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--shadow);
 }
 .fx-btn:disabled {
   opacity: 0.55;
@@ -559,8 +607,8 @@ body {
   padding: 6px 12px;
   font-family: var(--mono);
   font-size: 11px;
-  color: var(--muted);
-  background: var(--panel);
+  color: #141414;
+  background: var(--yellow);
   border-top: 2px solid var(--edge);
   flex: 0 0 auto;
 }
@@ -894,9 +942,9 @@ body {
 
 /* ---------------- Effects: button + live grid ---------------- */
 .fx-btn.on {
-  background: var(--accent);
+  background: var(--red);
   color: #fff;
-  box-shadow: inset 1.5px 1.5px 0 rgba(255, 255, 255, 0.4), inset -1.5px -1.5px 0 rgba(0, 0, 0, 0.28), 0 0 0 1px var(--edge);
+  box-shadow: 3px 3px 0 var(--shadow);
 }
 .fxgrid {
   position: absolute;
@@ -1246,4 +1294,153 @@ body {
   .photo video {
     max-height: 42vh;
   }
+}
+
+/* ---------------- v1.4.0 shell: Controls dropdown + Modal + wins ---------------- */
+.ctrl-anchor {
+  position: relative;
+  display: inline-flex;
+}
+.controls-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  cursor: pointer;
+  font-family: var(--font);
+  font-weight: 800;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 2px solid var(--edge);
+  box-shadow: 2px 2px 0 var(--shadow);
+}
+.controls-btn.on,
+.controls-btn:hover {
+  background: var(--yellow);
+  color: #141414;
+}
+.ctrl-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 212px;
+  z-index: 50;
+  background: var(--canvas);
+  border: 2px solid var(--edge);
+  box-shadow: 4px 4px 0 var(--shadow);
+}
+.cm-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text);
+  padding: 9px 10px;
+  text-align: left;
+}
+.cm-row + .cm-row {
+  border-top: 1px solid var(--edge);
+}
+.cm-row:hover:not(:disabled) {
+  background: var(--yellow);
+  color: #141414;
+}
+.cm-row:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.cm-ic {
+  width: 20px;
+  text-align: center;
+}
+.cm-v {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(20, 12, 14, 0.62);
+}
+.modal-card {
+  position: relative;
+  background: var(--panel);
+  border: 2px solid var(--edge);
+  box-shadow: 8px 8px 0 var(--shadow);
+  max-width: 100%;
+  max-height: 100%;
+  overflow: auto;
+  padding: 14px;
+}
+.modal-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  width: 30px;
+  height: 30px;
+  border: 2px solid var(--edge);
+  background: var(--yellow);
+  color: #141414;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 var(--shadow);
+}
+
+/* effect-name toast over the feed */
+.nowfx {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 32;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: var(--yellow);
+  color: #141414;
+  padding: 5px 9px;
+  border: 2px solid var(--edge);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
+}
+
+/* live intensity value */
+.fx-intensity-val {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+  min-width: 30px;
+  text-align: right;
+}
+
+/* persistent saved-state on the Save button */
+.act.saved {
+  background: var(--lime);
+  color: #141414;
+}
+
+/* empty reel state */
+.reel.reel-empty {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: #fff;
+  padding: 14px 6px;
+  opacity: 0.9;
 }

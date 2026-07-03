@@ -24,6 +24,7 @@
   } = $props();
 
   let busy = $state(false);
+  let saved = $state(false);
   const folder = canUseFolder();
   const copyable = canCopyImage();
   const isVideo = $derived(shot.media === 'video');
@@ -41,13 +42,16 @@
       if (folder) {
         const result = await saveToFolder(shot.blob, name);
         onToast(result === 'saved' ? '✓ Saved to your folder' : 'Save cancelled');
+        if (result === 'saved') saved = true;
       } else {
         downloadBlob(shot.blob, name);
         onToast(doneMsg);
+        saved = true;
       }
     } catch {
       downloadBlob(shot.blob, name);
       onToast(doneMsg);
+      saved = true;
     } finally {
       busy = false;
     }
@@ -110,9 +114,21 @@
       </div>
     {/if}
 
-    <button class="act primary" onclick={save} disabled={busy}>
-      <span class="ic">💾</span>
-      <span>Save<small>{folder ? 'to your PopStrip folder' : isVideo ? 'download the movie' : 'download the photo'}</small></span>
+    <button class="act primary" class:saved onclick={save} disabled={busy}>
+      <span class="ic">{saved ? '✓' : '💾'}</span>
+      <span
+        >{saved ? 'Saved' : 'Save'}<small
+          >{saved
+            ? folder
+              ? 'in your PopStrip folder'
+              : 'on your device'
+            : folder
+              ? 'to your PopStrip folder'
+              : isVideo
+                ? 'download the movie'
+                : 'download the photo'}</small
+        ></span
+      >
     </button>
 
     {#if shareable}

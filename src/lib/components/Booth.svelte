@@ -42,6 +42,9 @@
   let gpuCanvas = $state<HTMLCanvasElement | null>(null);
   let movieCanvasEl = $state<HTMLCanvasElement | null>(null);
   let gridOpen = $state(false);
+  let fxToast = $state<string | null>(null);
+  let fxToastTimer: ReturnType<typeof setTimeout> | undefined;
+  $effect(() => () => clearTimeout(fxToastTimer));
 
   // Fixed 4:3 recording surface — the movie canvas never resizes with the
   // effect (resizing the source of a live captureStream mid-clip is undefined
@@ -206,6 +209,9 @@
   function pick(id: EffectId): void {
     settings.effect = id;
     gridOpen = false;
+    fxToast = effectLabel(id);
+    clearTimeout(fxToastTimer);
+    fxToastTimer = setTimeout(() => (fxToast = null), 1400);
   }
 
   function onIntensity(e: Event): void {
@@ -254,6 +260,9 @@
   {/if}
   {#if hint}
     <div class="hint">{hint}</div>
+  {/if}
+  {#if fxToast}
+    <div class="nowfx">✦ {fxToast}</div>
   {/if}
   {#if gridOpen && camera.status === 'live'}
     <EffectGrid onPick={pick} />
@@ -336,6 +345,7 @@
           disabled={capturing || recState === 'recording'}
           aria-label="Effect strength"
         />
+        <span class="fx-intensity-val">{Math.round(effectIntensity(settings.effect) * 100)}%</span>
       </label>
     {/if}
     <button
@@ -346,7 +356,7 @@
       aria-pressed={gridOpen}
       title="Choose an effect"
     >
-      ✨ {effectLabel(settings.effect)}
+      ✨ Effects
     </button>
   </div>
 </div>

@@ -5,7 +5,7 @@
   let { onOpen }: { onOpen: (id: number) => void } = $props();
 
   function badge(kind: string): string {
-    return kind === 'quad' ? '▦' : kind === 'strip' ? '▤' : '';
+    return kind === 'quad' ? '4-UP' : kind === 'strip' ? 'STRIP' : '';
   }
 </script>
 
@@ -25,4 +25,6 @@
       </div>
     {/each}
   </div>
+{:else}
+  <div class="reel reel-empty" aria-label="Recent captures">Your shots appear here 📸</div>
 {/if}

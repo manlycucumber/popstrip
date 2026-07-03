@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { settings, saveSettings, toggleTheme, effectIntensity, type CaptureMode } from './lib/settings.svelte';
+  import { settings, saveSettings, effectIntensity, type CaptureMode } from './lib/settings.svelte';
   import { camera, startCamera, switchCamera, bindVideo } from './lib/camera.svelte';
   import { detectSupport } from './lib/support';
   import { grabFrame, grabGpuFrame, type Layout, type Shot } from './lib/capture';
@@ -13,6 +13,8 @@
   import { reel, loadReel, addCapture } from './lib/history.svelte';
   import Booth from './lib/components/Booth.svelte';
   import Review from './lib/components/Review.svelte';
+  import Modal from './lib/components/Modal.svelte';
+  import Controls from './lib/components/Controls.svelte';
   import Fallback from './lib/components/Fallback.svelte';
   import FxDefs from './lib/components/FxDefs.svelte';
 
@@ -518,8 +520,6 @@
   <!-- Title bar -->
   <div class="titlebar">
     <div class="wordmark"><span class="lens"></span><span>PopStrip</span></div>
-    <div class="spacer"></div>
-    <div class="winbtns"><i>–</i><i>▢</i><i>✕</i></div>
   </div>
 
   <!-- Toolbar -->
@@ -538,57 +538,13 @@
 
     <div class="spacer"></div>
 
-    <div class="tools">
-      <button class="tool" onclick={toggleTheme} title="Light / dark" aria-label="Toggle light or dark mode">
-        {settings.theme === 'light' ? '🌙' : '☀'}
-      </button>
-      <button
-        class="tool wide"
-        onclick={cycleCountdown}
-        disabled={recState !== 'idle'}
-        title="Countdown timer (before the shutter)"
-        aria-label="Change countdown timer"
-      >
-        ⏱ <b>{countdownLabel}</b>
-      </button>
-      <button
-        class="tool"
-        onclick={() => (settings.mirror = !settings.mirror)}
-        disabled={recState !== 'idle'}
-        aria-pressed={settings.mirror}
-        title="Mirror preview"
-        aria-label="Toggle mirror"
-      >
-        🪞
-      </button>
-      <button
-        class="tool"
-        onclick={() => (settings.sound = !settings.sound)}
-        aria-pressed={settings.sound}
-        title="Shutter sound"
-        aria-label="Toggle shutter sound"
-      >
-        🔊
-      </button>
-      <button
-        class="tool"
-        onclick={() => (settings.flash = !settings.flash)}
-        aria-pressed={settings.flash}
-        title="Flash"
-        aria-label="Toggle flash"
-      >
-        ⚡
-      </button>
-      <button
-        class="tool"
-        onclick={toggleFullscreen}
-        aria-pressed={isFullscreen}
-        title="Fullscreen booth"
-        aria-label="Toggle fullscreen"
-      >
-        ⛶
-      </button>
-    </div>
+    <Controls
+      {countdownLabel}
+      onCountdown={cycleCountdown}
+      {isFullscreen}
+      onFullscreen={toggleFullscreen}
+      locked={recState !== 'idle'}
+    />
   </div>
 
   <!-- Viewport -->
@@ -597,15 +553,17 @@
       <div class="screen"><Fallback /></div>
     {:else if screen === 'review' && shot}
       <div class="screen">
-        <Review
-          {shot}
-          canEdit={!!frames}
-          currentLayout={reviewLayout}
-          onRetake={retake}
-          onRetakeCell={retakeCell}
-          onRelayout={relayout}
-          onToast={showToast}
-        />
+        <Modal onClose={retake} title={shot.media === 'video' ? 'Nice clip' : 'Looks great'}>
+          <Review
+            {shot}
+            canEdit={!!frames}
+            currentLayout={reviewLayout}
+            onRetake={retake}
+            onRetakeCell={retakeCell}
+            onRelayout={relayout}
+            onToast={showToast}
+          />
+        </Modal>
       </div>
     {:else}
       <div class="screen">

@@ -5,7 +5,41 @@ Every version lands on `main`; `main` is always the deployment target for [popst
 
 ## [Unreleased]
 
-_Next up is v1.4.0 (GIF & boomerang exports), on the way to v2.0.0 (video feature-complete). Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
+_Next: **v1.5.0** — two "booth flavours" (a faithful **Photobooth** and our extensible **PopStrip**) with a first-run picker + a scalable effect browser (favorites / recents / search). Then **v1.6.0** — GIF & boomerang exports, on the way to v2.0.0 (video feature-complete). Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
+
+## [1.4.0] — 2026-07-03 — Authentic-90s refresh + shell
+
+A fresh, genuinely-90s look and a decluttered booth — sharp corners, bold flat
+colour, heavy outlines with hard drop-shadows, and a save screen that's finally an
+obvious pop-up.
+
+### Changed
+
+- **A whole new (old) look.** PopStrip drops the cartoony faux-retro styling for an
+  **authentic-90s** one: square corners, heavy outlines with hard offset shadows,
+  bold flat web-safe colour — its new signature is **red** (chosen by the resident
+  8-year-old art director) — chunky Impact/Arial type, and a tiled desktop. Louder
+  *and* more polished.
+- **The save screen is a pop-up.** Your photo or clip now appears as a card over a
+  dimmed booth, with **three obvious ways back** — a ✕, tapping outside, or Esc.
+- **A tidier top bar.** The six little toggles (theme, timer, mirror, sound, flash,
+  fullscreen) tuck behind a single **⚙ Controls** button; the fake window buttons
+  are gone.
+- **A roomier dock.** Modes on the left, the shutter dead-centre, effects on the
+  right — nothing crowds the shutter, and the effect button always just says
+  **"Effects."**
+
+### Added
+
+- Small nice-to-haves: the effect's **name flashes** on the feed when you pick it, the
+  strength slider shows a **live %**, the reel has a friendly **empty state** and
+  clearer **4-up / Strip** tags, and **Save** sticks on a lasting **"Saved ✓."**
+
+### Notes
+
+- Photos and movie clips are **byte-for-byte unchanged** — only the interface did.
+- Next: **two "booth flavours"** — a faithful Photobooth and our growing PopStrip,
+  with a scalable effect browser (v1.5.0) — then **GIF & boomerang** (v1.6.0).
 
 ## [1.3.0] — 2026-07-03 — mp4 everywhere
 
