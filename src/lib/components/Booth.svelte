@@ -178,9 +178,6 @@
       coverDraw(ctx, video, video.videoWidth, video.videoHeight, W, H);
     }
     ctx.restore();
-
-    // Brand mark, drawn on top in un-mirrored screen coords so it's never backwards.
-    drawWordmark(ctx, W, H);
   }
 
   async function startMovieLoop(gen: number): Promise<void> {
@@ -204,65 +201,6 @@
       movieGen++;
     };
   });
-
-  // Pre-rendered brand badge (drawn once, blitted each frame — no per-frame
-  // fillText / font-shaping, no font-load pop-in).
-  let brandBadge: HTMLCanvasElement | null = null;
-
-  function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
-  }
-
-  function ensureBadge(): HTMLCanvasElement {
-    if (brandBadge) return brandBadge;
-    const date = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-    const w = 480;
-    const h = 76;
-    const c = document.createElement('canvas');
-    c.width = w;
-    c.height = h;
-    const x = c.getContext('2d');
-    if (x) {
-      x.fillStyle = 'rgba(20, 18, 32, 0.55)';
-      roundRect(x, 0, 0, w, h, h / 2);
-      x.fill();
-      const dots = ['#ff2e88', '#ffcc00', '#00c2d6'];
-      dots.forEach((col, i) => {
-        x.beginPath();
-        x.fillStyle = col;
-        x.arc(30 + i * 22, h / 2, 8, 0, Math.PI * 2);
-        x.fill();
-      });
-      x.textBaseline = 'middle';
-      x.fillStyle = '#ffffff';
-      x.font = '700 32px Verdana, Geneva, Tahoma, sans-serif';
-      x.fillText('PopStrip', 104, h / 2 - 1);
-      const nameW = x.measureText('PopStrip').width;
-      x.fillStyle = 'rgba(255,255,255,0.7)';
-      x.font = "700 20px 'Courier New', 'Lucida Console', monospace";
-      x.fillText(date, 104 + nameW + 18, h / 2);
-    }
-    brandBadge = c;
-    return c;
-  }
-
-  function drawWordmark(ctx: CanvasRenderingContext2D, W: number, H: number): void {
-    const b = ensureBadge();
-    const dh = Math.round(H * 0.085);
-    const dw = Math.round((dh * b.width) / b.height);
-    const pad = Math.round(H * 0.03);
-    ctx.save();
-    ctx.globalAlpha = 0.92;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(b, W - dw - pad, H - dh - pad, dw, dh);
-    ctx.restore();
-  }
 
   // --- UI helpers ----------------------------------------------------------
   function pick(id: EffectId): void {

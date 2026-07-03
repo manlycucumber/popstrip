@@ -7,6 +7,14 @@ Every version lands on `main`; `main` is always the deployment target for [popst
 
 _Next up is v1.3.0 (mp4 for every browser via WebCodecs + mp4-muxer, then GIF/boomerang), on the way to v2.0.0 (video feature-complete). Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
 
+## [1.2.1] — 2026-07-03 — Watermark off
+
+### Changed
+
+- **Movie clips no longer carry a burned-in watermark.** The small PopStrip mark
+  + date is gone from recordings — a clip is now just the picture. (Photos are
+  unchanged; their footer wordmark lives in the print layout, not the frame.)
+
 ## [1.2.0] — 2026-07-03 — Movie clips 🎬
 
 The first slice of video: record a movie clip with any effect baked in, right in
