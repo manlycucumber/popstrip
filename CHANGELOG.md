@@ -5,7 +5,32 @@ Every version lands on `main`; `main` is always the deployment target for [popst
 
 ## [Unreleased]
 
-_Next up is v1.3.0 (mp4 for every browser via WebCodecs + mp4-muxer, then GIF/boomerang), on the way to v2.0.0 (video feature-complete). Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
+_Next up is v1.4.0 (GIF & boomerang exports), on the way to v2.0.0 (video feature-complete). Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
+
+## [1.3.0] — 2026-07-03 — mp4 everywhere
+
+Movie clips now record as real **mp4 (H.264/AAC) on every capable browser**, not
+just Safari — so a clip imports straight into iOS Photos and has an accurate length.
+
+### Added
+
+- **Real mp4 on Chrome, Edge & Firefox** — where a browser previously only
+  offered webm, PopStrip now muxes an H.264/AAC mp4 right in the browser via
+  WebCodecs (the [Mediabunny](https://mediabunny.dev) toolkit). Still 100%
+  on-device; nothing is uploaded.
+
+### Changed
+
+- Recording picks the best encoder automatically: native mp4 where the browser
+  records it directly (Safari), the WebCodecs mp4 path where it doesn't
+  (Chrome/Firefox), and webm as a universal fallback. The mp4 clips also carry
+  **precise duration metadata** (older MediaRecorder mp4s sometimes didn't).
+
+### Notes
+
+- The WebCodecs encoder is **lazy-loaded** only when it's actually needed, so the
+  base app stays a tiny download and browsers that don't need it never fetch it.
+- Next: **GIF & boomerang** exports (v1.4.0), then video feature-complete (v2.0.0).
 
 ## [1.2.1] — 2026-07-03 — Watermark off
 

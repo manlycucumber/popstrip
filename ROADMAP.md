@@ -4,9 +4,9 @@ _Where PopStrip is headed — a faithful, modern Photo Booth for the web. Last u
 
 Every release ships **live** to [popstrip.app](https://popstrip.app). `v1.0.0` = **photos feature-complete**; video is `v2.0.0`; add-ons are `v3.0.0`.
 
-## 🚧 Up next — Video, continued → [v2.0.0](https://github.com/manlycucumber/popstrip/milestone/5)
+## 🚧 Up next — [v1.4.0](https://github.com/manlycucumber/popstrip/milestone/5) — GIF & boomerang
 
-**Movie clips shipped in v1.2.0.** Still to come on the way to video feature-complete: **mp4 for every browser** (WebCodecs + mp4-muxer — so Chrome/Firefox clips import straight into iOS Photos) and **GIF / boomerang** (gifenc). Same effects pipeline, same one-canvas source of truth — landing as v1.3.0, then graduating to v2.0.0.
+**mp4 everywhere shipped in v1.3.0.** Next on the way to video feature-complete (v2.0.0): **GIF** and **boomerang** (a forward-then-reverse loop) exported from a recorded clip — encoded on-device with gifenc in a Web Worker, no upload.
 
 ## 🔭 Later / tracked
 
@@ -15,6 +15,7 @@ Every release ships **live** to [popstrip.app](https://popstrip.app). `v1.0.0` =
 
 ## ✅ Released
 
+- **[v1.3.0](https://github.com/manlycucumber/popstrip/milestone/9) — mp4 everywhere.** Movie clips record as real H.264/AAC **mp4 on every capable browser** — WebCodecs (via [Mediabunny](https://mediabunny.dev)) where MediaRecorder only gave webm (Chrome/Firefox) — so clips import into iOS Photos and carry precise duration. The encoder is lazy-loaded; Safari keeps its native mp4 and webm stays the universal fallback.
 - **[v1.2.0](https://github.com/manlycucumber/popstrip/milestone/8) — Movie clips.** Record a movie clip with any effect baked in (colour, shader, or warp), with optional microphone, a 30-second cap, and the same countdown lead-in. Clips play in review, save/share like photos, and join the reel with a ▶ badge — mp4 where supported, else webm, nothing uploaded. Introduces PopStrip's **unified effects canvas** (live preview == recorded output).
 - **[v1.1.0](https://github.com/manlycucumber/popstrip/milestone/7) — Photo Booth fidelity.** Reconciled with native Photo Booth: the full effect roster (added Colored Pencil, Squeeze, Mirror, Fish Eye, Stretch — 18 total), a **paged 3×3 grid** with Normal centered, **4:3 photos** (preview = capture = print), Photo-Booth effect names, and distortions retuned toward Core Image defaults (deeper Dent). Plus the `pb-verify` accuracy harness.
 - **[v1.0.0](https://github.com/manlycucumber/popstrip/milestone/4) — Warps + shader stylize → photos feature-complete.** WebGL funhouse warps (Bulge, Dent, Twirl, Light Tunnel) and shader effects (Comic Book, Glow, X-Ray) via pixi.js, an effect-strength slider, the full live effects grid, and installable + offline PWA.

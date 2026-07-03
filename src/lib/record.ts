@@ -12,6 +12,23 @@
 /** Longest a single clip can run before it auto-stops (memory + sanity guard). */
 export const MAX_CLIP_MS = 30_000;
 
+/**
+ * What a recording backend must do: consume the live canvas-capture video track
+ * (+ optional mic tracks) and hand back a finished clip as a Blob. Two
+ * implementations — `ClipRecorder` (MediaRecorder, the universal fallback) and
+ * the lazily-loaded `Mp4Backend` (Mediabunny/WebCodecs, real mp4 everywhere) —
+ * are interchangeable behind this, so App doesn't care which one it got.
+ */
+export interface RecorderBackend {
+  /** Begin muxing. May be async (the mp4 backend awaits its encoder). */
+  start(videoTrack: MediaStreamTrack, audioTracks: MediaStreamTrack[]): void | Promise<void>;
+  /** Resolve the finished clip — MUST finalize/flush before resolving. */
+  stop(): Promise<Blob>;
+  readonly recording: boolean;
+  /** Optional fast discard that skips finalizing; absent → caller falls back to stop(). */
+  abort?(): void | Promise<void>;
+}
+
 // Preferred first: baseline H.264 + AAC in mp4 is the most shareable (imports
 // straight into iOS Photos) and is what Safari records natively. Fall back to
 // webm (Chrome/Firefox). We take the first the platform actually supports and
@@ -61,7 +78,7 @@ export function extForMime(mime: string): 'mp4' | 'webm' {
  * - `stop()` resolves in the recorder's `stop` event, AFTER the final
  *   `dataavailable`, so the tail is never lost.
  */
-export class ClipRecorder {
+export class ClipRecorder implements RecorderBackend {
   private rec: MediaRecorder | null = null;
   private chunks: Blob[] = [];
   private resolveStop: ((b: Blob) => void) | null = null;
@@ -118,6 +135,43 @@ export class ClipRecorder {
       }
     });
   }
+}
+
+/**
+ * Whether the Mediabunny mp4 backend is worth using. Only where MediaRecorder
+ * CAN'T already give mp4 (i.e. it chose webm — Chrome/Firefox desktop) AND the
+ * browser can actually encode H.264. Safari already records native mp4, so it
+ * keeps the simpler MediaRecorder path; Firefox-Android / no-WebCodecs keep webm.
+ * This cheap check uses raw WebCodecs (no Mediabunny), so the mp4 chunk is only
+ * fetched when it will actually be used.
+ */
+export async function canUseMp4Backend(): Promise<boolean> {
+  if (pickVideoMime().includes('mp4')) return false; // MediaRecorder already does mp4 here
+  if (typeof VideoEncoder === 'undefined' || typeof VideoEncoder.isConfigSupported !== 'function') return false;
+  try {
+    const support = await VideoEncoder.isConfigSupported({
+      codec: 'avc1.42E01E', // H.264 constrained baseline — maximally compatible
+      width: 960,
+      height: 720,
+      framerate: 30,
+    });
+    return support.supported === true;
+  } catch {
+    return false;
+  }
+}
+
+/** Pick the best recording backend for this browser. mp4 where possible, else MediaRecorder. */
+export async function createRecorder(): Promise<RecorderBackend> {
+  if (await canUseMp4Backend()) {
+    try {
+      const { Mp4Backend } = await import('./record-mp4'); // lazy chunk (Mediabunny)
+      return new Mp4Backend();
+    } catch {
+      /* mp4 chunk failed to load → fall through to the universal fallback */
+    }
+  }
+  return new ClipRecorder();
 }
 
 // The mic is a per-session singleton, acquired only when a recording actually

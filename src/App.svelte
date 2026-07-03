@@ -7,7 +7,7 @@
   import { compose } from './lib/strip';
   import { effectCss, gpuOf, isGpu } from './lib/effects';
   import { ensureGpu, hasWebGL } from './lib/gpu/renderer';
-  import { ClipRecorder, acquireMic, stopMic, canRecord, MAX_CLIP_MS } from './lib/record';
+  import { createRecorder, acquireMic, stopMic, canRecord, MAX_CLIP_MS, type RecorderBackend } from './lib/record';
   import { shutterClick, countdownBeep } from './lib/sound';
   import { celebrate } from './lib/confetti';
   import { reel, loadReel, addCapture } from './lib/history.svelte';
@@ -40,7 +40,7 @@
   let recState = $state<'idle' | 'countdown' | 'recording'>('idle');
   let recMs = $state(0);
   let movieCanvas: HTMLCanvasElement | null = null;
-  let recorder: ClipRecorder | null = null;
+  let recorder: RecorderBackend | null = null;
   let recStream: MediaStream | null = null;
   let recStartAt = 0;
   let maxTimer: ReturnType<typeof setTimeout> | undefined;
@@ -192,12 +192,13 @@
   function teardownRecording(): void {
     clearMaxTimer();
     stopRecTicker();
+    void recorder?.abort?.(); // release a half-started mp4 backend, if any
+    recorder = null;
     stopMic();
     if (recStream) {
       for (const t of recStream.getTracks()) t.stop();
       recStream = null;
     }
-    recorder = null;
     recState = 'idle';
     recMs = 0;
   }
@@ -256,8 +257,24 @@
       recStream = movieCanvas.captureStream(30);
       const vTrack = recStream.getVideoTracks()[0];
       if (!vTrack) throw new Error('no video track');
-      recorder = new ClipRecorder();
-      recorder.start(vTrack, micTracks);
+      // Choosing the backend may lazy-load the mp4 encoder chunk (an await) —
+      // re-check we're still live/wanted afterwards, like every other await here.
+      recorder = await createRecorder();
+      if (aborted || camera.status !== 'live') {
+        teardownRecording();
+        return;
+      }
+      await recorder.start(vTrack, micTracks);
+      if (aborted || camera.status !== 'live') {
+        // Camera dropped during backend startup — finalize/drop and bail.
+        try {
+          await recorder.stop();
+        } catch {
+          /* nothing to keep */
+        }
+        teardownRecording();
+        return;
+      }
       recState = 'recording';
       recStartAt = performance.now();
       recMs = 0;
@@ -283,10 +300,22 @@
     stopRecTicker();
 
     let blob: Blob | null = null;
-    try {
-      blob = await rec.stop();
-    } catch {
-      /* keep whatever we can */
+    if (!keep && rec.abort) {
+      // Discarding: skip finalize where the backend can (mp4 → output.cancel()).
+      try {
+        await rec.abort();
+      } catch {
+        /* already gone */
+      }
+    } else {
+      // ORDER-CRITICAL: the mp4 backend drains the live canvas + mic tracks until
+      // stop() (finalize) resolves — so we MUST fully await it BEFORE stopping the
+      // mic and capture-stream tracks below, or the clip's tail is lost.
+      try {
+        blob = await rec.stop();
+      } catch {
+        /* keep whatever we can */
+      }
     }
 
     stopMic();
