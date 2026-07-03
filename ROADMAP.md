@@ -10,7 +10,7 @@ Every release ships **live** to [popstrip.app](https://popstrip.app). `v1.0.0` =
 
 ## 🔭 Later / tracked
 
-- **[v3.0.0](https://github.com/manlycucumber/popstrip/milestone/6) — Add-ons.** Green-screen backdrops, AR face props, custom frames & branding, stickers, themes, and a print helper.
+- **[v3.0.0](https://github.com/manlycucumber/popstrip/milestone/6) — Add-ons.** Green-screen backdrops, **AR face-tracked overlays — including Photo Booth's _Dizzy_ (blue birds circling your head) and _Lovestruck_ (hearts)**, AR face props (glasses/hats), custom frames & branding, stickers, themes, and a print helper. Face tracking runs on-device (MediaPipe), keeping the nothing-uploaded promise.
 - **Lock effect fidelity against real Photo Booth.** The `tools/pb-verify` harness renders our shaders against a test chart and scores each effect vs Photo Booth once references are captured on a Mac (one-time). Calibrate defaults + thresholds, then gate in CI.
 
 ## ✅ Released
