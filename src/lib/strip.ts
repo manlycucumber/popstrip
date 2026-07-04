@@ -4,6 +4,7 @@
 // print-ready by construction and just downscaled for the web.
 
 import type { Layout, Shot } from './capture';
+import { drawFrame, type FrameId } from './frames';
 
 type Spec = {
   w: number;
@@ -64,7 +65,7 @@ function drawCover(
 export async function compose(
   frames: HTMLCanvasElement[],
   layout: Layout,
-  opts: { date?: string } = {},
+  opts: { date?: string; frame?: FrameId } = {},
 ): Promise<Shot> {
   const spec = SPECS[layout];
   const canvas = document.createElement('canvas');
@@ -129,6 +130,10 @@ export async function compose(
   ctx.fillStyle = INK;
   ctx.font = `700 ${Math.round(spec.brand * 0.48)}px 'Courier New', 'Lucida Console', monospace`;
   ctx.fillText(date, cx, footTop + spec.footer * 0.83);
+
+  // Decorative frame wraps the picture (everything above the caption footer), so
+  // the border hugs the photo and the wordmark/date stay clear beneath it.
+  if (opts.frame && opts.frame !== 'none') drawFrame(ctx, opts.frame, spec.w, footTop);
 
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not render the photo.'))), 'image/png');

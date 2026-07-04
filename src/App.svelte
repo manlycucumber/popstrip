@@ -11,6 +11,7 @@
   import { loadBackground, composite } from './lib/backgrounds';
   import { ensureFaceDetector, detectFace } from './lib/face';
   import { drawAR, type OverlayId, type FacePropId } from './lib/overlay';
+  import type { FrameId } from './lib/frames';
   import { createRecorder, acquireMic, stopMic, canRecord, MAX_CLIP_MS, type RecorderBackend } from './lib/record';
   import { resetGifFrames, gifFrameCount, gifFrameData, GIF_W, GIF_H, GIF_DELAY_MS } from './lib/gif';
   import { shutterClick, countdownBeep } from './lib/sound';
@@ -118,6 +119,11 @@
     return settings.flavor !== 'photobooth' ? settings.faceProp || 'none' : 'none';
   }
 
+  /** The active decorative frame id, or 'none' (only in the PopStrip flavor). */
+  function activeFrame(): FrameId {
+    return settings.flavor !== 'photobooth' ? settings.frame || 'none' : 'none';
+  }
+
   async function fireShutter(): Promise<HTMLCanvasElement> {
     if (settings.sound) shutterClick();
     doFlash();
@@ -200,7 +206,7 @@
         const next = await fireShutter();
         const updated = frames.slice();
         updated[retakeIndex] = next;
-        const composed = await compose(updated, reviewLayout, { date: todayStr() });
+        const composed = await compose(updated, reviewLayout, { date: todayStr(), frame: activeFrame() });
         if (shot) URL.revokeObjectURL(shot.url);
         frames = updated;
         shot = composed;
@@ -224,7 +230,7 @@
       }
 
       const layout: Layout = mode === 'quad' ? 'quad' : 'single';
-      const composed = await compose(shots, layout, { date: todayStr() });
+      const composed = await compose(shots, layout, { date: todayStr(), frame: activeFrame() });
       if (shot) URL.revokeObjectURL(shot.url);
       frames = mode === 'quad' ? shots : null;
       reviewLayout = layout;
@@ -244,7 +250,7 @@
   async function relayout(layout: Layout): Promise<void> {
     if (!frames || layout === reviewLayout) return;
     try {
-      const composed = await compose(frames, layout, { date: todayStr() });
+      const composed = await compose(frames, layout, { date: todayStr(), frame: activeFrame() });
       if (shot) URL.revokeObjectURL(shot.url);
       reviewLayout = layout;
       shot = composed;
@@ -662,6 +668,7 @@
       settings.customBackground,
       settings.arOverlay,
       settings.faceProp,
+      settings.frame,
     ];
     saveSettings();
   });

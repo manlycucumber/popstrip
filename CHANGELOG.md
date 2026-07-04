@@ -5,7 +5,35 @@ Every version lands on `main`; `main` is always the deployment target for [popst
 
 ## [Unreleased]
 
-_Next toward **v3.0.0** (add-ons feature-complete): frames & themes, print, then graduate. Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
+_Next toward **v3.0.0** (add-ons feature-complete): themes, print, then graduate. Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
+
+## [2.5.0] — 2026-07-04 — Frames 🖼️
+
+Dress up the whole picture: a decorative **border you put around your photo**.
+Seven procedural frames that wrap your shot — and ride along into movie clips
+(and their GIFs) — stacking on top of any effect, background, and face effect.
+
+### Added
+
+- A **Frames** row in the PopStrip effect browser: **Classic** (bold red),
+  **Filmstrip** (sprocket holes), **Comic** (black-and-yellow panel), **Hearts**,
+  **Stars**, **Confetti**, and **Tape** (washi-tape corners).
+- Frames wrap the picture — above the caption — in **single, 4-up and strip**
+  layouts, and are baked into **movie clips** (so GIFs and boomerangs carry them).
+- **Orthogonal** to everything else: a frame stacks with any effect, green-screen
+  backdrop, orbiting birds/hearts, and face props all at once.
+
+### How it works
+
+- Every frame is drawn **procedurally** (no image assets → self-contained,
+  offline, crisp at any size) as an additive top layer that never touches the
+  effects renderer and needs **no model and no new download** — the base app is
+  unchanged. The live preview shows the frame as a lightweight static overlay.
+
+### Notes
+
+- PopStrip flavour only — the faithful **Photobooth** flavour keeps Apple's exact
+  roster and output.
 
 ## [2.4.0] — 2026-07-04 — Face props 🕶️
 

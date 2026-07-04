@@ -15,6 +15,7 @@
   import { settings, effectIntensity, toggleFavorite } from '../settings.svelte';
   import { BACKGROUNDS, sceneDataUri, fileToDataUrl } from '../backgrounds';
   import { OVERLAYS, FACE_PROPS } from '../overlay';
+  import { FRAMES, drawFrame, type FrameId } from '../frames';
   import { cameraStream, cameraVideo } from '../camera.svelte';
   import { ensureGpu, renderLive, hasWebGL } from '../gpu/renderer';
 
@@ -191,6 +192,40 @@
   function pickProp(id: (typeof FACE_PROPS)[number]['id']): void {
     settings.faceProp = id; // orthogonal — stacks with any effect, background + overlay
   }
+
+  // --- Frames (decorative borders) -----------------------------------------
+  const curFrame = $derived(settings.frame || 'none');
+  function pickFrame(id: FrameId): void {
+    settings.frame = id; // orthogonal — wraps the picture over any effect/background/AR
+  }
+  // Paint a small preview: a neutral "photo" backdrop with the frame drawn over
+  // it, so each tile shows the actual border. Repaints if the id ever changes.
+  function frameThumb(node: HTMLCanvasElement, id: FrameId) {
+    const paint = (fid: FrameId): void => {
+      const w = 160;
+      const h = 120;
+      node.width = w;
+      node.height = h;
+      const ctx = node.getContext('2d');
+      if (!ctx) return;
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0, '#8a8f98');
+      g.addColorStop(1, '#585d66');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = 'rgba(255,255,255,0.14)'; // a soft head-ish blob so it reads as a picture
+      ctx.beginPath();
+      ctx.arc(w / 2, h * 0.56, h * 0.26, 0, Math.PI * 2);
+      ctx.fill();
+      drawFrame(ctx, fid, w, h);
+    };
+    paint(id);
+    return {
+      update(next: FrameId) {
+        paint(next);
+      },
+    };
+  }
   async function onUpload(e: Event): Promise<void> {
     const input = e.currentTarget as HTMLInputElement;
     const file = input.files?.[0];
@@ -295,6 +330,27 @@
             >
               <span class="fxb-bg-glyph">{fp.glyph}</span>
               <span class="fxb-name">{fp.label}</span>
+            </button>
+          {/each}
+        </div>
+      </section>
+      <section class="fxb-section">
+        <h3 class="fxb-h">Frames <span class="fxb-h-note">borders · photos &amp; clips</span></h3>
+        <div class="fxb-grid fxb-bg-grid">
+          {#each FRAMES as fr (fr.id)}
+            <button
+              class="fxb-cell fxb-bgcell"
+              class:active={curFrame === fr.id}
+              onclick={() => pickFrame(fr.id)}
+              aria-pressed={curFrame === fr.id}
+              title={fr.label}
+            >
+              {#if fr.id === 'none'}
+                <span class="fxb-bg-glyph">⦸</span>
+              {:else}
+                <canvas class="fxb-frame-thumb" use:frameThumb={fr.id}></canvas>
+              {/if}
+              <span class="fxb-name">{fr.label}</span>
             </button>
           {/each}
         </div>

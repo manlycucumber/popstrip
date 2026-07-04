@@ -1187,6 +1187,12 @@ body {
   background: transparent;
 }
 
+/* Frame overlay: the outermost decorative border; transparent centre, no clicks. */
+.frame-feed {
+  pointer-events: none;
+  background: transparent;
+}
+
 /* REC badge over the feed (mirrors .live, but recording-red). */
 .recstate {
   position: absolute;
@@ -1798,6 +1804,11 @@ body {
   place-items: center;
   font-size: 26px;
   color: var(--muted);
+}
+.fxb-frame-thumb {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 .fxb-bgupload input[type='file'] {
   position: absolute;

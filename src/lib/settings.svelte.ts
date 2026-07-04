@@ -3,6 +3,7 @@
 
 import { isEffectId, gpuOf, inFlavor, type EffectId, type FlavorId } from './effects';
 import { isOverlayId, isFacePropId, type OverlayId, type FacePropId } from './overlay';
+import { isFrameId, type FrameId } from './frames';
 
 export type Theme = 'light' | 'dark';
 export type CaptureMode = 'single' | 'quad' | 'movie';
@@ -37,6 +38,10 @@ type SettingsShape = {
   // AR face prop (PopStrip flavor): 'none' or a wearable (shades, top hat, …).
   // Orthogonal to arOverlay too — you can wear shades AND have birds orbiting.
   faceProp: FacePropId;
+  // Decorative frame (PopStrip flavor): 'none' or a border (classic, filmstrip,
+  // …) drawn around the picture. Orthogonal to everything else — it wraps the
+  // final photo and movie clip on top of any effect / background / AR.
+  frame: FrameId;
 };
 
 const KEY = 'popstrip:settings';
@@ -77,6 +82,7 @@ export const settings = $state<SettingsShape>({
   customBackground: typeof saved.customBackground === 'string' ? saved.customBackground : undefined,
   arOverlay: isOverlayId(saved.arOverlay) ? saved.arOverlay : 'none',
   faceProp: isFacePropId(saved.faceProp) ? saved.faceProp : 'none',
+  frame: isFrameId(saved.frame) ? saved.frame : 'none',
 });
 
 /** Current intensity (0..1) for an effect, falling back to its registered default. */

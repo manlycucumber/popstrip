@@ -9,6 +9,7 @@
   import { loadBackground, composite } from '../backgrounds';
   import { ensureFaceDetector, faceReady, detectFace } from '../face';
   import { drawAR } from '../overlay';
+  import { drawFrame } from '../frames';
   import Countdown from './Countdown.svelte';
   import Reel from './Reel.svelte';
   import EffectGrid from './EffectGrid.svelte';
@@ -94,6 +95,14 @@
   const facePropId = $derived(settings.flavor !== 'photobooth' ? settings.faceProp || 'none' : 'none');
   const arOn = $derived(arOverlayId !== 'none' || facePropId !== 'none');
   const arActive = $derived(arOn && camera.status === 'live' && !gridOpen && !movieMode);
+
+  // Decorative frame (PopStrip flavor): a border drawn around the picture. Also
+  // an additive top layer (no renderLive, no model) — but static, so in photo
+  // modes it's a cheap overlay canvas painted once per frame-id change (no rAF
+  // loop); in movie mode it's baked into the recording (paintMovieFrame).
+  const frameId = $derived(settings.flavor !== 'photobooth' ? settings.frame || 'none' : 'none');
+  const frameOn = $derived(frameId !== 'none');
+  const frameActive = $derived(frameOn && camera.status === 'live' && !gridOpen && !movieMode);
 
   // Exactly one pixi renderer + one Sprite feed the whole app, so only ONE loop
   // may call renderLive() per frame. These deriveds are mutually exclusive by
@@ -369,6 +378,10 @@
     // and any GIF/boomerang sampled off it below — carries the overlay too.
     if (arOn && faceReady()) paintOverlayOnto(ctx, W, H, performance.now());
 
+    // Decorative frame is the outermost layer — baked over everything (effect,
+    // background, AR) so the clip and its GIF/boomerang carry the border too.
+    if (frameOn) drawFrame(ctx, frameId, W, H);
+
     // While recording, tap the just-painted frame for a possible GIF/boomerang
     // export. Reads this same canvas (no extra renderLive consumer); the sampler
     // downscales + rate-limits internally, so this is cheap every frame.
@@ -518,6 +531,23 @@
     };
   });
 
+  // --- Frame overlay (photo preview) --------------------------------------
+  // The frame is static, so there's no loop: this effect repaints the overlay
+  // canvas only when the chosen frame (or the canvas element) changes. In movie
+  // mode the recording surface bakes its own frame, so this preview is gated off
+  // there (frameActive excludes movieMode).
+  let frameCanvasEl = $state<HTMLCanvasElement | null>(null);
+  let frameCtx: CanvasRenderingContext2D | null = null;
+  $effect(() => {
+    const id = frameId; // reactive dep — repaint on change
+    const el = frameCanvasEl;
+    if (!el) return;
+    if (!frameCtx || frameCtx.canvas !== el) frameCtx = el.getContext('2d');
+    if (!frameCtx) return;
+    frameCtx.clearRect(0, 0, el.width, el.height);
+    drawFrame(frameCtx, id, el.width, el.height);
+  });
+
   // --- UI helpers ----------------------------------------------------------
   function pick(id: EffectId): void {
     settings.effect = id;
@@ -569,6 +599,10 @@
   {#if arActive}
     <!-- AR overlay: a transparent top layer over whatever base is showing. -->
     <canvas bind:this={arCanvasEl} class="gpu-feed ar-feed" width={MOVIE_W} height={MOVIE_H}></canvas>
+  {/if}
+  {#if frameActive}
+    <!-- Decorative frame: the outermost static border over the picture. -->
+    <canvas bind:this={frameCanvasEl} class="gpu-feed frame-feed" width={MOVIE_W} height={MOVIE_H}></canvas>
   {/if}
   {#if recState === 'recording'}
     <div class="recstate"><span class="recdot"></span> REC <span class="rectime">{recLabel}</span></div>
