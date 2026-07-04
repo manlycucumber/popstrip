@@ -5,7 +5,43 @@ Every version lands on `main`; `main` is always the deployment target for [popst
 
 ## [Unreleased]
 
-_Next toward **v3.0.0** (add-ons): **AR face overlays** — the daughter's Dizzy Birds (birds & hearts that track your head) — green screen in movie clips, plus face props, frames & themes, all on-device. Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
+_Next toward **v3.0.0** (add-ons): **AR face overlays** — the daughter's Dizzy Birds (birds & hearts that track your head) — plus face props, frames & themes, all on-device. Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
+
+## [2.2.0] — 2026-07-03 — Green screen, now in movies 🎬🟢
+
+Green screen graduates from photos to **movie clips**. Pick a backdrop in the
+PopStrip booth and record yourself standing on a beach, in outer space, or in
+front of your own photo — the background is replaced **live** and baked into the
+recording.
+
+### Added
+
+- **Green screen in movie mode.** Any built-in scene (or your uploaded image)
+  now composites into recorded clips, exactly as it does for photos. The live
+  movie preview shows the final composite, so what you record is what you see.
+- **GIF & boomerang inherit the backdrop.** They're sampled off the same
+  recording surface, so exporting a clip's GIF or boomerang carries the
+  background for free.
+
+### How it works
+
+- The movie recording canvas cuts the segmented person out of the effected frame
+  and drops them onto the scene — all **on-device**, using the same self-hosted
+  MediaPipe segmentation as photos (lazy-loaded, so the base app is unchanged).
+  Segmentation runs at a reduced cadence with last-good-mask reuse, so recording
+  stays smooth and never blocks on inference.
+
+### Fixed
+
+- **4-up green-screen photos** could come out as four copies of the last frame —
+  the burst frames aliased one shared compositing canvas. Each captured frame is
+  now an independent copy.
+
+### Notes
+
+- PopStrip flavour; the faithful Photobooth stays Apple-exact.
+- Warps (Bulge, Twirl, …) distort geometry, so their silhouette edges against a
+  backdrop are approximate; colour and stylize effects line up cleanly.
 
 ## [2.1.0] — 2026-07-03 — Green screen 🟢
 

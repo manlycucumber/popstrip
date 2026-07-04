@@ -215,7 +215,7 @@
   <div class="fxb-scroll" bind:this={scrollRoot}>
     {#if !query.trim()}
       <section class="fxb-section">
-        <h3 class="fxb-h">Backgrounds <span class="fxb-h-note">green-screen · photos</span></h3>
+        <h3 class="fxb-h">Backgrounds <span class="fxb-h-note">green-screen · photos &amp; clips</span></h3>
         <div class="fxb-grid fxb-bg-grid">
           {#each BACKGROUNDS as bg (bg.id)}
             <button

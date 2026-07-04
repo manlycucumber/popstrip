@@ -14,7 +14,7 @@ Open it, smile, grab a photo. PopStrip is a static, client-side web app: your ca
 - 🎚️ **Two booths, one app** — pick your flavour on first run and switch anytime from the title bar: a faithful **Photobooth** (Apple's roster, the classic paged 3×3 grid, an iMac-G3 Aqua look) or our extensible **PopStrip** (a searchable, favouritable effect browser and the bold 90s look)
 - 🎬 **Movie mode** — record a clip with any effect baked in (and optional sound) as a real **mp4** (or webm), then save or share it
 - 🎞️ **GIF & boomerang** — turn any movie clip into a looping animated GIF, or a forward-then-back boomerang, encoded on-device in a background worker
-- 🟢 **Green screen** (PopStrip booth) — drop yourself onto a beach, outer space, a sunset, or your own photo; background replacement runs **on-device** (nothing uploaded) and stacks with any effect
+- 🟢 **Green screen** (PopStrip booth) — drop yourself onto a beach, outer space, a sunset, or your own photo, in **photos and movie clips**; background replacement runs **on-device** (nothing uploaded) and stacks with any effect
 - 🎞️ A **reel** of your recent photos and clips, kept on your device
 - 💾 Save to a folder, share to your apps, or copy — all local
 - 🕹️ Two retro skins with **Light & Dark** modes; works on desktop & mobile

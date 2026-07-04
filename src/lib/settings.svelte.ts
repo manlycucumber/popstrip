@@ -26,7 +26,7 @@ type SettingsShape = {
   favorites: EffectId[];
   // Green-screen (PopStrip flavor): the chosen backdrop — 'none', a built-in
   // scene id, or 'custom' (the user's uploaded image, held in customBackground
-  // as a downscaled on-device data URL). Applies to photos; movie support later.
+  // as a downscaled on-device data URL). Applies to photos and movie clips.
   background: string;
   customBackground?: string;
 };

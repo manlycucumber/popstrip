@@ -123,7 +123,17 @@
       const mask = segment(videoEl!, performance.now());
       if (!mask) return base;
       const bg = await loadBackground(bgId, settings.customBackground);
-      return composite(base, base.width, base.height, mask, bg, settings.mirror);
+      const composed = composite(base, base.width, base.height, mask, bg, settings.mirror);
+      // composite() returns a SHARED scratch canvas the live preview loop keeps
+      // overwriting — copy it into an independent frame so a quad burst doesn't
+      // end up with four aliases of one canvas showing the last frame.
+      const out = document.createElement('canvas');
+      out.width = composed.width;
+      out.height = composed.height;
+      const octx = out.getContext('2d');
+      if (!octx) return base;
+      octx.drawImage(composed, 0, 0);
+      return out;
     } catch {
       return base; // segmentation is best-effort — never fail a capture over it
     }

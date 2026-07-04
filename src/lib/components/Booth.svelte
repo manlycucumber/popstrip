@@ -5,7 +5,7 @@
   import { ensureGpu, renderLive } from '../gpu/renderer';
   import { canRecord, MAX_CLIP_MS } from '../record';
   import { sampleGifFrame } from '../gif';
-  import { ensureSegmenter, segment, type Mask } from '../segment';
+  import { ensureSegmenter, segmenterReady, segment, type Mask } from '../segment';
   import { loadBackground, composite } from '../backgrounds';
   import Countdown from './Countdown.svelte';
   import Reel from './Reel.svelte';
@@ -133,100 +133,12 @@
     };
   });
 
-  // --- Movie loop (movie mode, any effect) --------------------------------
-  // Paints the current effect, baked in, into the fixed movie canvas every
-  // frame — this ONE canvas is both the on-screen preview and what we record,
-  // so movie clips are WYSIWYG exactly like photos.
-  let movieGen = 0;
-  let movieCtx: CanvasRenderingContext2D | null = null;
-
-  function coverDraw(
-    ctx: CanvasRenderingContext2D,
-    src: CanvasImageSource,
-    iw: number,
-    ih: number,
-    w: number,
-    h: number,
-  ): void {
-    if (!iw || !ih) return;
-    const scale = Math.max(w / iw, h / ih);
-    const sw = w / scale;
-    const sh = h / scale;
-    const sx = (iw - sw) / 2;
-    const sy = (ih - sh) / 2;
-    ctx.drawImage(src, sx, sy, sw, sh, 0, 0, w, h);
-  }
-
-  function paintMovieFrame(): void {
-    const canvas = movieCanvasEl;
-    if (!canvas || !video || !video.videoWidth) return;
-    if (!movieCtx) movieCtx = canvas.getContext('2d');
-    const ctx = movieCtx;
-    if (!ctx) return;
-    const W = canvas.width;
-    const H = canvas.height;
-    const g = gpuOf(settings.effect);
-
-    ctx.save();
-    ctx.filter = 'none';
-    if (g) {
-      // renderLive already bakes the shader + mirror; draw it straight.
-      const src = renderLive(video, g.shaderId, effectIntensity(settings.effect), settings.mirror);
-      if (src) {
-        coverDraw(ctx, src, src.width, src.height, W, H);
-      } else {
-        // pixi not ready this frame — show the raw mirrored feed (no blank frames).
-        if (settings.mirror) {
-          ctx.translate(W, 0);
-          ctx.scale(-1, 1);
-        }
-        coverDraw(ctx, video, video.videoWidth, video.videoHeight, W, H);
-      }
-    } else {
-      // CSS effect: mirror + ctx.filter, exactly like the photo capture path.
-      if (settings.mirror) {
-        ctx.translate(W, 0);
-        ctx.scale(-1, 1);
-      }
-      ctx.filter = effectCss(settings.effect);
-      coverDraw(ctx, video, video.videoWidth, video.videoHeight, W, H);
-    }
-    ctx.restore();
-
-    // While recording, tap the just-painted frame for a possible GIF/boomerang
-    // export. Reads this same canvas (no extra renderLive consumer); the sampler
-    // downscales + rate-limits internally, so this is cheap every frame.
-    if (recState === 'recording') sampleGifFrame(canvas, performance.now());
-  }
-
-  async function startMovieLoop(gen: number): Promise<void> {
-    void ensureGpu(); // warm pixi if available; CSS effects don't need it
-    const tick = (): void => {
-      if (gen !== movieGen) return;
-      paintMovieFrame();
-      requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-  }
-
-  $effect(() => {
-    if (movieActive) {
-      const gen = ++movieGen;
-      void startMovieLoop(gen);
-    } else {
-      movieGen++;
-    }
-    return () => {
-      movieGen++;
-    };
-  });
-
-  // --- Green-screen loop (photo modes, PopStrip flavor) -------------------
-  // Run the effect as usual, segment the raw feed at its own reduced cadence
-  // (reusing the last mask between — the 30fps-safety rule), and composite the
-  // cut-out person over the chosen backdrop in 2D. Compositing is off the pixi
-  // path, so for a GPU effect this loop's single renderLive() is the only
-  // consumer that frame — same one-consumer invariant as the loops above.
+  // --- Green-screen shared (photo + movie paths) --------------------------
+  // Both the photo backdrop preview and the movie recording surface cut the
+  // segmented person out of the effected frame and drop them onto a backdrop.
+  // The segmentation runs at its own reduced cadence off the pixi path (reusing
+  // the last mask between), so a GPU effect's single renderLive() stays the only
+  // consumer that frame — the one-consumer invariant holds in every path.
   let bgCanvasEl = $state<HTMLCanvasElement | null>(null);
   let bgGen = 0;
   let bgCtx: CanvasRenderingContext2D | null = null;
@@ -257,78 +169,210 @@
     };
   });
 
+  // Load the segmenter whenever a backdrop is chosen and the camera is live — in
+  // either the photo (bgActive) or the movie path. Kept OUT of the render loops
+  // (which only reuse the last mask and never await inference). On a browser
+  // without it, drop the backdrop gracefully.
+  $effect(() => {
+    if (!(bgOn && camera.status === 'live' && !gridOpen)) return;
+    let alive = true;
+    void ensureSegmenter().then((ok) => {
+      if (alive && !ok) {
+        fxToast = 'Backgrounds aren’t supported here';
+        clearTimeout(fxToastTimer);
+        fxToastTimer = setTimeout(() => (fxToast = null), 2000);
+        settings.background = 'none';
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  });
+
   function displaySize(vw: number, vh: number): [number, number] {
     const scale = Math.min(1, 720 / Math.max(vw, vh));
     return [Math.max(2, Math.round(vw * scale)), Math.max(2, Math.round(vh * scale))];
   }
 
-  function paintGreenFrame(): void {
-    const canvas = bgCanvasEl;
-    if (!canvas || !video || !video.videoWidth) return;
-    const [dw, dh] = displaySize(video.videoWidth, video.videoHeight);
-
-    // 1) Effected, mirrored foreground (GPU via pixi, else CSS/normal in 2D).
+  // The effected + mirrored person frame at ~display resolution (video aspect),
+  // as a source + its size. GPU → the pixi output; else a 2D scratch (CSS look,
+  // or the raw feed while pixi warms). This holds the sole renderLive() call for
+  // a GPU effect in the green-screen paths.
+  function buildForeground(): { fg: CanvasImageSource; fw: number; fh: number } | null {
+    if (!video || !video.videoWidth) return null;
     const g = gpuOf(settings.effect);
     const src = g ? renderLive(video, g.shaderId, effectIntensity(settings.effect), settings.mirror) : null;
-    let fg: CanvasImageSource;
-    let fw: number;
-    let fh: number;
-    if (g && src) {
-      fg = src;
-      fw = src.width;
-      fh = src.height;
+    if (g && src) return { fg: src, fw: src.width, fh: src.height };
+    const [dw, dh] = displaySize(video.videoWidth, video.videoHeight);
+    if (!fgWork) {
+      fgWork = document.createElement('canvas');
+      fgWorkCtx = fgWork.getContext('2d');
+    }
+    if (fgWork.width !== dw || fgWork.height !== dh) {
+      fgWork.width = dw;
+      fgWork.height = dh;
+    }
+    const fx = fgWorkCtx;
+    if (!fx) return null;
+    fx.save();
+    fx.filter = 'none';
+    if (settings.mirror) {
+      fx.translate(dw, 0);
+      fx.scale(-1, 1);
+    }
+    if (!g) fx.filter = effectCss(settings.effect); // CSS look; raw feed while pixi warms
+    fx.drawImage(video, 0, 0, dw, dh);
+    fx.restore();
+    return { fg: fgWork, fw: dw, fh: dh };
+  }
+
+  // Refresh the person mask at MASK_INTERVAL_MS cadence, reusing the last one
+  // between. Segments a downscaled copy so a high-res webcam doesn't build huge
+  // masks 15×/sec (composite scales it back up). NEVER awaits — VIDEO-mode
+  // segmentation is synchronous — so it's safe inside the 30fps record loop.
+  function refreshMask(now: number): void {
+    if (!video || !video.videoWidth) return;
+    if (lastMask && now - lastMaskAt < MASK_INTERVAL_MS) return;
+    const s = Math.min(1, SEG_MAX / Math.max(video.videoWidth, video.videoHeight));
+    const sw = Math.max(2, Math.round(video.videoWidth * s));
+    const sh = Math.max(2, Math.round(video.videoHeight * s));
+    if (!segInput) {
+      segInput = document.createElement('canvas');
+      segInputCtx = segInput.getContext('2d');
+    }
+    if (segInput.width !== sw || segInput.height !== sh) {
+      segInput.width = sw;
+      segInput.height = sh;
+    }
+    if (!segInputCtx) return;
+    segInputCtx.drawImage(video, 0, 0, sw, sh);
+    const m = segment(segInput, now);
+    if (m) {
+      lastMask = m;
+      lastMaskAt = now;
+    }
+  }
+
+  // --- Movie loop (movie mode, any effect) --------------------------------
+  // Paints the current effect, baked in, into the fixed movie canvas every
+  // frame — this ONE canvas is both the on-screen preview and what we record,
+  // so movie clips are WYSIWYG exactly like photos. With a backdrop chosen it
+  // additionally cuts the person out and composites them over the scene, so the
+  // recorded clip (and any GIF/boomerang sampled off it) carries the background.
+  let movieGen = 0;
+  let movieCtx: CanvasRenderingContext2D | null = null;
+
+  function coverDraw(
+    ctx: CanvasRenderingContext2D,
+    src: CanvasImageSource,
+    iw: number,
+    ih: number,
+    w: number,
+    h: number,
+  ): void {
+    if (!iw || !ih) return;
+    const scale = Math.max(w / iw, h / ih);
+    const sw = w / scale;
+    const sh = h / scale;
+    const sx = (iw - sw) / 2;
+    const sy = (ih - sh) / 2;
+    ctx.drawImage(src, sx, sy, sw, sh, 0, 0, w, h);
+  }
+
+  function paintMovieFrame(): void {
+    const canvas = movieCanvasEl;
+    if (!canvas || !video || !video.videoWidth) return;
+    if (!movieCtx) movieCtx = canvas.getContext('2d');
+    const ctx = movieCtx;
+    if (!ctx) return;
+    const W = canvas.width;
+    const H = canvas.height;
+
+    if (bgOn && segmenterReady()) {
+      // Green-screen: build the effected fg (one renderLive() for a GPU effect),
+      // segment at cadence, composite over the backdrop at fg resolution, then
+      // cover-fit that video-aspect result into the fixed 4:3 recording surface —
+      // the person stays aligned with their backdrop exactly as in photos.
+      const built = buildForeground();
+      if (built) {
+        const { fg, fw, fh } = built;
+        refreshMask(performance.now());
+        const frame = lastMask ? composite(fg, fw, fh, lastMask, bgImg, settings.mirror, fw, fh) : fg;
+        ctx.save();
+        ctx.filter = 'none';
+        coverDraw(ctx, frame, fw, fh, W, H);
+        ctx.restore();
+      }
     } else {
-      if (!fgWork) {
-        fgWork = document.createElement('canvas');
-        fgWorkCtx = fgWork.getContext('2d');
-      }
-      if (fgWork.width !== dw || fgWork.height !== dh) {
-        fgWork.width = dw;
-        fgWork.height = dh;
-      }
-      const fx = fgWorkCtx;
-      if (!fx) return;
-      fx.save();
-      fx.filter = 'none';
-      if (settings.mirror) {
-        fx.translate(dw, 0);
-        fx.scale(-1, 1);
-      }
-      if (!g) fx.filter = effectCss(settings.effect); // CSS look; raw feed while pixi warms
-      fx.drawImage(video, 0, 0, dw, dh);
-      fx.restore();
-      fg = fgWork;
-      fw = dw;
-      fh = dh;
-    }
-
-    // 2) Segment at cadence; reuse the last mask between. Segment a downscaled
-    //    copy so a high-res webcam doesn't make huge masks 15×/sec (the mask is
-    //    scaled back up in composite) — capture segments full-res for quality.
-    const now = performance.now();
-    if (!lastMask || now - lastMaskAt >= MASK_INTERVAL_MS) {
-      const s = Math.min(1, SEG_MAX / Math.max(video.videoWidth, video.videoHeight));
-      const sw = Math.max(2, Math.round(video.videoWidth * s));
-      const sh = Math.max(2, Math.round(video.videoHeight * s));
-      if (!segInput) {
-        segInput = document.createElement('canvas');
-        segInputCtx = segInput.getContext('2d');
-      }
-      if (segInput.width !== sw || segInput.height !== sh) {
-        segInput.width = sw;
-        segInput.height = sh;
-      }
-      if (segInputCtx) {
-        segInputCtx.drawImage(video, 0, 0, sw, sh);
-        const m = segment(segInput, now);
-        if (m) {
-          lastMask = m;
-          lastMaskAt = now;
+      const g = gpuOf(settings.effect);
+      ctx.save();
+      ctx.filter = 'none';
+      if (g) {
+        // renderLive already bakes the shader + mirror; draw it straight.
+        const src = renderLive(video, g.shaderId, effectIntensity(settings.effect), settings.mirror);
+        if (src) {
+          coverDraw(ctx, src, src.width, src.height, W, H);
+        } else {
+          // pixi not ready this frame — show the raw mirrored feed (no blank frames).
+          if (settings.mirror) {
+            ctx.translate(W, 0);
+            ctx.scale(-1, 1);
+          }
+          coverDraw(ctx, video, video.videoWidth, video.videoHeight, W, H);
         }
+      } else {
+        // CSS effect: mirror + ctx.filter, exactly like the photo capture path.
+        if (settings.mirror) {
+          ctx.translate(W, 0);
+          ctx.scale(-1, 1);
+        }
+        ctx.filter = effectCss(settings.effect);
+        coverDraw(ctx, video, video.videoWidth, video.videoHeight, W, H);
       }
+      ctx.restore();
     }
 
-    // 3) Composite onto the display canvas (sized to the foreground).
+    // While recording, tap the just-painted frame for a possible GIF/boomerang
+    // export. Reads this same canvas (no extra renderLive consumer); the sampler
+    // downscales + rate-limits internally, so this is cheap every frame.
+    if (recState === 'recording') sampleGifFrame(canvas, performance.now());
+  }
+
+  async function startMovieLoop(gen: number): Promise<void> {
+    void ensureGpu(); // warm pixi if available; CSS effects don't need it
+    if (bgOn) void ensureSegmenter(); // warm the segmenter so recording opens composited
+    const tick = (): void => {
+      if (gen !== movieGen) return;
+      paintMovieFrame();
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+
+  $effect(() => {
+    if (movieActive) {
+      const gen = ++movieGen;
+      void startMovieLoop(gen);
+    } else {
+      movieGen++;
+      lastMask = null;
+    }
+    return () => {
+      movieGen++;
+    };
+  });
+
+  // --- Green-screen preview loop (photo modes, PopStrip flavor) ------------
+  // The live backdrop preview for photo capture: the same build → segment →
+  // composite as the movie path, drawn to its own canvas at foreground
+  // resolution (no fixed surface — stills capture at native res).
+  function paintGreenFrame(): void {
+    const canvas = bgCanvasEl;
+    if (!canvas) return;
+    const built = buildForeground();
+    if (!built) return;
+    const { fg, fw, fh } = built;
+    refreshMask(performance.now());
     if (canvas.width !== fw || canvas.height !== fh) {
       canvas.width = fw;
       canvas.height = fh;
@@ -343,18 +387,8 @@
     }
   }
 
-  async function startGreenLoop(gen: number): Promise<void> {
-    void ensureGpu(); // GPU effects still render through pixi
-    const ok = await ensureSegmenter();
-    if (gen !== bgGen) return;
-    if (!ok) {
-      // Segmentation unavailable in this browser — drop the backdrop gracefully.
-      fxToast = 'Backgrounds aren’t supported here';
-      clearTimeout(fxToastTimer);
-      fxToastTimer = setTimeout(() => (fxToast = null), 2000);
-      settings.background = 'none';
-      return;
-    }
+  function startGreenLoop(gen: number): void {
+    void ensureGpu(); // GPU effects still render through pixi; the segmenter warms via its own effect
     const tick = (): void => {
       if (gen !== bgGen) return;
       paintGreenFrame();
@@ -366,7 +400,7 @@
   $effect(() => {
     if (bgActive) {
       const gen = ++bgGen;
-      void startGreenLoop(gen);
+      startGreenLoop(gen);
     } else {
       bgGen++;
       lastMask = null;
