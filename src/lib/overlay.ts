@@ -31,6 +31,41 @@ export function isOverlayId(v: unknown): v is OverlayId {
   return v === 'none' || v === 'dizzy' || v === 'lovestruck';
 }
 
+// Face props are the second AR family: static accessories pinned to the face —
+// glasses, hats, a mustache — rather than animated orbiters. They're orthogonal
+// to the orbit overlays (you can wear shades AND have birds), and need only the
+// same head anchor (centre, size, tilt): every prop is placed from canonical
+// face proportions, so no heavier landmark mesh is required.
+export type FacePropId =
+  | 'none'
+  | 'shades'
+  | 'glasses'
+  | 'mustache'
+  | 'clownnose'
+  | 'tophat'
+  | 'crown'
+  | 'puppy';
+
+export type FaceProp = { id: FacePropId; label: string; glyph: string };
+
+/** The chooser roster: None, then the props (face-level first, then head-toppers). */
+export const FACE_PROPS: FaceProp[] = [
+  { id: 'none', label: 'None', glyph: '⦸' },
+  { id: 'shades', label: 'Shades', glyph: '🕶️' },
+  { id: 'glasses', label: 'Glasses', glyph: '👓' },
+  { id: 'mustache', label: 'Mustache', glyph: '🥸' },
+  { id: 'clownnose', label: 'Clown Nose', glyph: '🤡' },
+  { id: 'tophat', label: 'Top Hat', glyph: '🎩' },
+  { id: 'crown', label: 'Crown', glyph: '👑' },
+  { id: 'puppy', label: 'Puppy', glyph: '🐶' },
+];
+
+const FACE_PROP_IDS = FACE_PROPS.map((p) => p.id) as string[];
+
+export function isFacePropId(v: unknown): v is FacePropId {
+  return typeof v === 'string' && FACE_PROP_IDS.includes(v);
+}
+
 // --- Head geometry from the anchor --------------------------------------
 type Head = { cx: number; cy: number; w: number; h: number; roll: number };
 
@@ -261,15 +296,267 @@ function drawSparkles(ctx: CanvasRenderingContext2D, head: Head, t: number): voi
   }
 }
 
-/**
- * Draw the overlay for `id` onto a TRANSPARENT layer context (it clears the
- * region first). `anchor` is the raw head anchor from face.ts; `mirror` matches
- * the preview/capture; `tMs` is a monotonic clock (drives the animation). No-op
- * for 'none' or a null/faded anchor — the caller then just shows the plain frame.
- */
-export function drawOverlay(
+// --- Face props (glasses, hats, …) --------------------------------------
+// Drawn in the head's local frame: after translate(head.cx, head.cy) +
+// rotate(head.roll), the origin sits at the eye midpoint with +x toward one ear
+// and +y toward the chin. Everything is measured in `u` = head.w (the face
+// width), so props scale and tilt with the head. They're symmetric, so the
+// mirror flip (already applied in headOf) doesn't change their look.
+
+function roundRectPath(
   ctx: CanvasRenderingContext2D,
-  id: OverlayId,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+): void {
+  const rr = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x, y + h, rr);
+  ctx.arcTo(x, y + h, x, y, rr);
+  ctx.arcTo(x, y, x + w, y, rr);
+  ctx.closePath();
+}
+
+function drawShades(ctx: CanvasRenderingContext2D, u: number): void {
+  const lensW = 0.36 * u;
+  const lensH = 0.28 * u;
+  const gap = 0.1 * u;
+  const off = lensW / 2 + gap / 2;
+  ctx.lineCap = 'round';
+  // Temple arms toward the ears + the nose bridge.
+  ctx.strokeStyle = '#111';
+  ctx.lineWidth = 0.05 * u;
+  ctx.beginPath();
+  ctx.moveTo(-off - lensW / 2, -0.02 * u);
+  ctx.lineTo(-0.6 * u, -0.1 * u);
+  ctx.moveTo(off + lensW / 2, -0.02 * u);
+  ctx.lineTo(0.6 * u, -0.1 * u);
+  ctx.moveTo(-gap / 2, -0.02 * u);
+  ctx.lineTo(gap / 2, -0.02 * u);
+  ctx.stroke();
+  for (const sgn of [-1, 1]) {
+    const x = sgn * off;
+    roundRectPath(ctx, x - lensW / 2, -lensH / 2, lensW, lensH, 0.09 * u);
+    const g = ctx.createLinearGradient(x, -lensH / 2, x, lensH / 2);
+    g.addColorStop(0, '#40454d');
+    g.addColorStop(0.5, '#14161b');
+    g.addColorStop(1, '#000');
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 0.035 * u;
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.22)';
+    ctx.beginPath();
+    ctx.ellipse(x - lensW * 0.18, -lensH * 0.2, lensW * 0.18, lensH * 0.12, -0.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawGlasses(ctx: CanvasRenderingContext2D, u: number): void {
+  const r = 0.19 * u;
+  const gap = 0.12 * u;
+  const off = r + gap / 2;
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = '#20242c';
+  ctx.lineWidth = 0.045 * u;
+  // Arms + a little curved bridge.
+  ctx.beginPath();
+  ctx.moveTo(-off - r, -0.02 * u);
+  ctx.lineTo(-0.6 * u, -0.08 * u);
+  ctx.moveTo(off + r, -0.02 * u);
+  ctx.lineTo(0.6 * u, -0.08 * u);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(-gap / 2, -0.02 * u);
+  ctx.quadraticCurveTo(0, -0.09 * u, gap / 2, -0.02 * u);
+  ctx.stroke();
+  for (const sgn of [-1, 1]) {
+    const x = sgn * off;
+    ctx.beginPath();
+    ctx.arc(x, 0, r, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(200,225,245,0.22)';
+    ctx.fill();
+    ctx.strokeStyle = '#20242c';
+    ctx.lineWidth = 0.05 * u;
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.34)';
+    ctx.beginPath();
+    ctx.ellipse(x - r * 0.35, -r * 0.35, r * 0.28, r * 0.16, -0.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawMustache(ctx: CanvasRenderingContext2D, u: number): void {
+  ctx.fillStyle = '#2b1d12';
+  for (const sgn of [-1, 1]) {
+    ctx.save();
+    ctx.scale(sgn, 1);
+    ctx.beginPath();
+    ctx.moveTo(0, 0.03 * u); // centre dip under the nose
+    ctx.bezierCurveTo(0.12 * u, -0.14 * u, 0.34 * u, -0.16 * u, 0.44 * u, -0.14 * u); // sweep up to the curl
+    ctx.bezierCurveTo(0.53 * u, -0.13 * u, 0.52 * u, 0.0 * u, 0.42 * u, 0.02 * u); // curled tip
+    ctx.bezierCurveTo(0.32 * u, 0.03 * u, 0.18 * u, 0.08 * u, 0.09 * u, 0.16 * u); // underside
+    ctx.bezierCurveTo(0.05 * u, 0.19 * u, 0.02 * u, 0.13 * u, 0, 0.09 * u); // back to centre
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawClownNose(ctx: CanvasRenderingContext2D, u: number): void {
+  const r = 0.15 * u;
+  const g = ctx.createRadialGradient(-r * 0.3, -r * 0.3, r * 0.1, 0, 0, r);
+  g.addColorStop(0, '#ff6a5a');
+  g.addColorStop(0.6, '#e5202b');
+  g.addColorStop(1, '#b3121a');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.beginPath();
+  ctx.ellipse(-r * 0.35, -r * 0.35, r * 0.22, r * 0.16, -0.5, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawTopHat(ctx: CanvasRenderingContext2D, u: number): void {
+  const brimW = 1.18 * u;
+  const brimH = 0.17 * u;
+  const crownW = 0.66 * u;
+  const crownH = 0.72 * u;
+  ctx.fillStyle = '#17171c';
+  roundRectPath(ctx, -crownW / 2, -crownH, crownW, crownH + 0.04 * u, 0.05 * u);
+  ctx.fill();
+  ctx.fillStyle = '#e5202b'; // hat band
+  ctx.fillRect(-crownW / 2, -0.17 * u, crownW, 0.13 * u);
+  ctx.fillStyle = '#17171c'; // brim on top of the crown base
+  ctx.beginPath();
+  ctx.ellipse(0, 0, brimW / 2, brimH / 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.1)'; // sheen
+  roundRectPath(ctx, -crownW / 2 + 0.05 * u, -crownH + 0.05 * u, 0.09 * u, crownH - 0.24 * u, 0.03 * u);
+  ctx.fill();
+}
+
+function drawCrown(ctx: CanvasRenderingContext2D, u: number): void {
+  const w = 1.02 * u;
+  const h = 0.5 * u;
+  const pts = 5;
+  const valley = -0.35 * h;
+  ctx.strokeStyle = '#d99a1f';
+  ctx.lineWidth = 0.03 * u;
+  ctx.fillStyle = '#ffd23f';
+  ctx.beginPath();
+  ctx.moveTo(-w / 2, 0);
+  ctx.lineTo(-w / 2, valley);
+  for (let i = 0; i < pts; i++) {
+    const xMid = -w / 2 + ((i + 0.5) / pts) * w;
+    const xEnd = -w / 2 + ((i + 1) / pts) * w;
+    ctx.lineTo(xMid, -h); // peak
+    ctx.lineTo(xEnd, valley); // valley
+  }
+  ctx.lineTo(w / 2, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  const jewels = ['#e5202b', '#2b7fd4', '#8fd92e', '#ff5ea2', '#12cfda'];
+  for (let i = 0; i < pts; i++) {
+    const xMid = -w / 2 + ((i + 0.5) / pts) * w;
+    ctx.fillStyle = jewels[i % jewels.length];
+    ctx.beginPath();
+    ctx.arc(xMid, -h + 0.08 * u, 0.045 * u, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawPuppy(ctx: CanvasRenderingContext2D, u: number): void {
+  // Floppy ears above the head…
+  for (const sgn of [-1, 1]) {
+    ctx.save();
+    ctx.translate(sgn * 0.52 * u, -0.42 * u);
+    ctx.rotate(sgn * 0.5);
+    ctx.fillStyle = '#6b4423';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 0.22 * u, 0.42 * u, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#c98a9a';
+    ctx.beginPath();
+    ctx.ellipse(0, 0.06 * u, 0.11 * u, 0.28 * u, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  // …and a shiny black nose on the face.
+  ctx.save();
+  ctx.translate(0, 0.5 * u);
+  ctx.fillStyle = '#241a17';
+  ctx.beginPath();
+  ctx.moveTo(0, 0.12 * u);
+  ctx.bezierCurveTo(-0.18 * u, 0.02 * u, -0.14 * u, -0.12 * u, 0, -0.08 * u);
+  ctx.bezierCurveTo(0.14 * u, -0.12 * u, 0.18 * u, 0.02 * u, 0, 0.12 * u);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.beginPath();
+  ctx.ellipse(-0.05 * u, -0.04 * u, 0.04 * u, 0.03 * u, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawFaceProp(ctx: CanvasRenderingContext2D, id: FacePropId, head: Head): void {
+  const u = head.w; // the face width is the scale unit for every prop
+  ctx.save();
+  ctx.translate(head.cx, head.cy); // origin = eye midpoint
+  ctx.rotate(head.roll);
+  ctx.lineJoin = 'round';
+  switch (id) {
+    case 'shades':
+      drawShades(ctx, u);
+      break;
+    case 'glasses':
+      drawGlasses(ctx, u);
+      break;
+    case 'mustache':
+      ctx.translate(0, 0.52 * u); // between nose and mouth
+      drawMustache(ctx, u);
+      break;
+    case 'clownnose':
+      ctx.translate(0, 0.44 * u); // on the nose tip
+      drawClownNose(ctx, u);
+      break;
+    case 'tophat':
+      ctx.translate(0, -0.66 * u); // above the head
+      drawTopHat(ctx, u);
+      break;
+    case 'crown':
+      ctx.translate(0, -0.62 * u);
+      drawCrown(ctx, u);
+      break;
+    case 'puppy':
+      drawPuppy(ctx, u);
+      break;
+    default:
+      break;
+  }
+  ctx.restore();
+}
+
+/**
+ * Draw the AR layer (an orbit overlay and/or a face prop) onto a TRANSPARENT
+ * layer context — it clears the region first. `anchor` is the raw head anchor
+ * from face.ts; `mirror` matches the preview/capture; `tMs` is a monotonic clock
+ * driving the orbit animation. No-op for all-'none' or a null/faded anchor — the
+ * caller then just shows the plain frame. The orbit draws first (with its behind-
+ * the-head occlusion); the prop draws on top, in front of the face.
+ */
+export function drawAR(
+  ctx: CanvasRenderingContext2D,
+  overlayId: OverlayId,
+  propId: FacePropId,
   anchor: FaceAnchor | null,
   tMs: number,
   mirror: boolean,
@@ -277,17 +564,19 @@ export function drawOverlay(
   H: number,
 ): void {
   ctx.clearRect(0, 0, W, H);
-  if (id === 'none' || !anchor) return;
+  if (!anchor) return;
+  if (overlayId === 'none' && propId === 'none') return;
   const head = headOf(anchor, mirror, W, H);
   const t = tMs / 1000;
   ctx.save();
   ctx.globalAlpha = anchor.alpha;
-  if (id === 'dizzy') {
+  if (overlayId === 'dizzy') {
     drawOrbit(ctx, head, t, 'bird', 1);
     drawSparkles(ctx, head, t);
-  } else {
+  } else if (overlayId === 'lovestruck') {
     drawOrbit(ctx, head, t, 'heart', 1);
     drawRisingHearts(ctx, head, t);
   }
+  if (propId !== 'none') drawFaceProp(ctx, propId, head);
   ctx.restore();
 }

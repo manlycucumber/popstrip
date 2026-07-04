@@ -8,7 +8,7 @@
   import { ensureSegmenter, segmenterReady, segment, type Mask } from '../segment';
   import { loadBackground, composite } from '../backgrounds';
   import { ensureFaceDetector, faceReady, detectFace } from '../face';
-  import { drawOverlay } from '../overlay';
+  import { drawAR } from '../overlay';
   import Countdown from './Countdown.svelte';
   import Reel from './Reel.svelte';
   import EffectGrid from './EffectGrid.svelte';
@@ -84,13 +84,15 @@
   const bgOn = $derived(bgId !== 'none');
   const bgActive = $derived(bgOn && camera.status === 'live' && !gridOpen && !movieMode);
 
-  // AR face overlay (PopStrip flavor): birds/hearts that orbit your head. Unlike
-  // green-screen it's an ADDITIVE top layer — it never calls renderLive(), so it
-  // isn't part of the single-renderer mutual exclusion; it simply draws over
-  // whatever base is showing. In photo modes it paints its own transparent
-  // overlay canvas; in movie mode it's baked into the recording (paintMovieFrame).
-  const arId = $derived(settings.flavor !== 'photobooth' ? settings.arOverlay || 'none' : 'none');
-  const arOn = $derived(arId !== 'none');
+  // AR face layer (PopStrip flavor): orbiting birds/hearts and/or a face prop
+  // (glasses, hats, …). Unlike green-screen it's an ADDITIVE top layer — it never
+  // calls renderLive(), so it isn't part of the single-renderer mutual exclusion;
+  // it simply draws over whatever base is showing. In photo modes it paints its
+  // own transparent overlay canvas; in movie mode it's baked into the recording
+  // (paintMovieFrame). arOverlay + faceProp are orthogonal and can stack.
+  const arOverlayId = $derived(settings.flavor !== 'photobooth' ? settings.arOverlay || 'none' : 'none');
+  const facePropId = $derived(settings.flavor !== 'photobooth' ? settings.faceProp || 'none' : 'none');
+  const arOn = $derived(arOverlayId !== 'none' || facePropId !== 'none');
   const arActive = $derived(arOn && camera.status === 'live' && !gridOpen && !movieMode);
 
   // Exactly one pixi renderer + one Sprite feed the whole app, so only ONE loop
@@ -212,6 +214,7 @@
         clearTimeout(fxToastTimer);
         fxToastTimer = setTimeout(() => (fxToast = null), 2000);
         settings.arOverlay = 'none';
+        settings.faceProp = 'none';
       }
     });
     return () => {
@@ -471,7 +474,7 @@
       arLayer.height = H;
     }
     if (!arLayerCtx) return;
-    drawOverlay(arLayerCtx, arId, anchor, now, settings.mirror, W, H);
+    drawAR(arLayerCtx, arOverlayId, facePropId, anchor, now, settings.mirror, W, H);
     ctx.save();
     ctx.filter = 'none';
     ctx.globalCompositeOperation = 'source-over';
@@ -490,7 +493,7 @@
     if (!ctx) return;
     const now = performance.now();
     const anchor = detectFace(video, now);
-    drawOverlay(ctx, arId, anchor, now, settings.mirror, canvas.width, canvas.height);
+    drawAR(ctx, arOverlayId, facePropId, anchor, now, settings.mirror, canvas.width, canvas.height);
   }
 
   function startOverlayLoop(gen: number): void {

@@ -10,7 +10,7 @@
   import { ensureSegmenter, segment } from './lib/segment';
   import { loadBackground, composite } from './lib/backgrounds';
   import { ensureFaceDetector, detectFace } from './lib/face';
-  import { drawOverlay, type OverlayId } from './lib/overlay';
+  import { drawAR, type OverlayId, type FacePropId } from './lib/overlay';
   import { createRecorder, acquireMic, stopMic, canRecord, MAX_CLIP_MS, type RecorderBackend } from './lib/record';
   import { resetGifFrames, gifFrameCount, gifFrameData, GIF_W, GIF_H, GIF_DELAY_MS } from './lib/gif';
   import { shutterClick, countdownBeep } from './lib/sound';
@@ -113,6 +113,11 @@
     return settings.flavor !== 'photobooth' ? settings.arOverlay || 'none' : 'none';
   }
 
+  /** The active AR face prop id, or 'none' (only in the PopStrip flavor). */
+  function activeProp(): FacePropId {
+    return settings.flavor !== 'photobooth' ? settings.faceProp || 'none' : 'none';
+  }
+
   async function fireShutter(): Promise<HTMLCanvasElement> {
     if (settings.sound) shutterClick();
     doFlash();
@@ -151,16 +156,17 @@
     }
   }
 
-  /** Bake the AR overlay (birds/hearts) on top of a captured frame (or return it). */
+  /** Bake the AR layer (orbit overlay and/or face prop) onto a captured frame. */
   async function bakeOverlay(frame: HTMLCanvasElement): Promise<HTMLCanvasElement> {
-    const arId = activeOverlay();
-    if (arId === 'none') return frame;
+    const overlayId = activeOverlay();
+    const propId = activeProp();
+    if (overlayId === 'none' && propId === 'none') return frame;
     try {
       if (!(await ensureFaceDetector())) return frame;
       const anchor = detectFace(videoEl!, performance.now());
       if (!anchor) return frame;
       // Copy onto an independent 2D canvas (frame may be a GPU-backed canvas),
-      // then composite the overlay from a transparent layer so its head-hole
+      // then composite the AR layer from a transparent canvas so any head-hole
       // reveals the frame's own head rather than punching a hole in the photo.
       const out = document.createElement('canvas');
       out.width = frame.width;
@@ -173,7 +179,7 @@
       layer.height = out.height;
       const lctx = layer.getContext('2d');
       if (!lctx) return out;
-      drawOverlay(lctx, arId, anchor, performance.now(), settings.mirror, out.width, out.height);
+      drawAR(lctx, overlayId, propId, anchor, performance.now(), settings.mirror, out.width, out.height);
       octx.drawImage(layer, 0, 0);
       return out;
     } catch {
@@ -655,6 +661,7 @@
       settings.background,
       settings.customBackground,
       settings.arOverlay,
+      settings.faceProp,
     ];
     saveSettings();
   });

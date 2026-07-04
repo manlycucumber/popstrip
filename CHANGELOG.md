@@ -5,7 +5,37 @@ Every version lands on `main`; `main` is always the deployment target for [popst
 
 ## [Unreleased]
 
-_Next toward **v3.0.0** (add-ons feature-complete): more AR — **face props** (glasses, hats), frames & themes, all on-device. Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
+_Next toward **v3.0.0** (add-ons feature-complete): frames & themes, print, then graduate. Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
+
+## [2.4.0] — 2026-07-04 — Face props 🕶️
+
+Dress up: face-tracked **props you wear** — **Shades**, **Glasses**, a
+**Mustache**, a **Clown Nose**, a **Top Hat**, a **Crown**, and **Puppy** ears &
+nose. They ride along in photos *and* movie clips (and their GIFs), and stack
+with everything — an effect, a green-screen backdrop, *and* orbiting birds all
+at once.
+
+### Added
+
+- A **Face props** row in the PopStrip effect browser's effects sheet: seven
+  wearables that track your head — sitting on your eyes, nose, or crown and
+  tilting as you tilt.
+- Props are **orthogonal**: independent of the Fun overlays (Dizzy Birds /
+  Lovestruck), so you can wear shades *and* have birds circling at the same time.
+- Baked into **photos and movie clips**, so saved stills, clips, GIFs and
+  boomerangs all carry the props.
+
+### How it works
+
+- Reuses the same on-device, self-hosted MediaPipe face detector as Dizzy Birds —
+  **no new model, no new download**; each prop is drawn procedurally (no image
+  assets) and placed from the head's centre, size and tilt. Like the birds, it's
+  an additive layer that never touches the effects renderer.
+
+### Notes
+
+- PopStrip flavour only (the faithful Photobooth flavour keeps Apple's exact
+  roster). Tracking works best with your face toward the camera in good light.
 
 ## [2.3.0] — 2026-07-04 — Dizzy Birds 🐦
 

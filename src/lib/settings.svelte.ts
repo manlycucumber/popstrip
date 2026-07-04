@@ -2,7 +2,7 @@
 // Uses Svelte 5 runes; mutating `settings.*` updates the UI everywhere.
 
 import { isEffectId, gpuOf, inFlavor, type EffectId, type FlavorId } from './effects';
-import { isOverlayId, type OverlayId } from './overlay';
+import { isOverlayId, isFacePropId, type OverlayId, type FacePropId } from './overlay';
 
 export type Theme = 'light' | 'dark';
 export type CaptureMode = 'single' | 'quad' | 'movie';
@@ -34,6 +34,9 @@ type SettingsShape = {
   // (hearts). Orthogonal to the effect + background — it layers on top of both,
   // in photos and movie clips.
   arOverlay: OverlayId;
+  // AR face prop (PopStrip flavor): 'none' or a wearable (shades, top hat, …).
+  // Orthogonal to arOverlay too — you can wear shades AND have birds orbiting.
+  faceProp: FacePropId;
 };
 
 const KEY = 'popstrip:settings';
@@ -73,6 +76,7 @@ export const settings = $state<SettingsShape>({
   background: typeof saved.background === 'string' ? saved.background : 'none',
   customBackground: typeof saved.customBackground === 'string' ? saved.customBackground : undefined,
   arOverlay: isOverlayId(saved.arOverlay) ? saved.arOverlay : 'none',
+  faceProp: isFacePropId(saved.faceProp) ? saved.faceProp : 'none',
 });
 
 /** Current intensity (0..1) for an effect, falling back to its registered default. */

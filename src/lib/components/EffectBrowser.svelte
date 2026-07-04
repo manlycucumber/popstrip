@@ -14,7 +14,7 @@
   import { browserCategories, effect as effectOf, gpuOf, type EffectId, type FlavorId } from '../effects';
   import { settings, effectIntensity, toggleFavorite } from '../settings.svelte';
   import { BACKGROUNDS, sceneDataUri, fileToDataUrl } from '../backgrounds';
-  import { OVERLAYS } from '../overlay';
+  import { OVERLAYS, FACE_PROPS } from '../overlay';
   import { cameraStream, cameraVideo } from '../camera.svelte';
   import { ensureGpu, renderLive, hasWebGL } from '../gpu/renderer';
 
@@ -185,6 +185,12 @@
   function pickAr(id: (typeof OVERLAYS)[number]['id']): void {
     settings.arOverlay = id; // orthogonal — stacks with any effect + background
   }
+
+  // --- Face props (AR wearables) -------------------------------------------
+  const curProp = $derived(settings.faceProp || 'none');
+  function pickProp(id: (typeof FACE_PROPS)[number]['id']): void {
+    settings.faceProp = id; // orthogonal — stacks with any effect, background + overlay
+  }
   async function onUpload(e: Event): Promise<void> {
     const input = e.currentTarget as HTMLInputElement;
     const file = input.files?.[0];
@@ -272,6 +278,23 @@
             >
               <span class="fxb-bg-glyph">{ov.glyph}</span>
               <span class="fxb-name">{ov.label}</span>
+            </button>
+          {/each}
+        </div>
+      </section>
+      <section class="fxb-section">
+        <h3 class="fxb-h">Face props <span class="fxb-h-note">glasses, hats &amp; more · photos &amp; clips</span></h3>
+        <div class="fxb-grid fxb-bg-grid">
+          {#each FACE_PROPS as fp (fp.id)}
+            <button
+              class="fxb-cell fxb-bgcell"
+              class:active={curProp === fp.id}
+              onclick={() => pickProp(fp.id)}
+              aria-pressed={curProp === fp.id}
+              title={fp.label}
+            >
+              <span class="fxb-bg-glyph">{fp.glyph}</span>
+              <span class="fxb-name">{fp.label}</span>
             </button>
           {/each}
         </div>
