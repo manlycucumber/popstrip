@@ -15,6 +15,7 @@ Open it, smile, grab a photo. PopStrip is a static, client-side web app: your ca
 - 🎬 **Movie mode** — record a clip with any effect baked in (and optional sound) as a real **mp4** (or webm), then save or share it
 - 🎞️ **GIF & boomerang** — turn any movie clip into a looping animated GIF, or a forward-then-back boomerang, encoded on-device in a background worker
 - 🟢 **Green screen** (PopStrip booth) — drop yourself onto a beach, outer space, a sunset, or your own photo, in **photos and movie clips**; background replacement runs **on-device** (nothing uploaded) and stacks with any effect
+- 🐦 **AR face effects** (PopStrip booth) — **Dizzy Birds** (bluebirds that circle your head) and **Lovestruck** (hearts), face-tracked **on-device**, baked into photos and movie clips, and stackable with any effect or background
 - 🎞️ A **reel** of your recent photos and clips, kept on your device
 - 💾 Save to a folder, share to your apps, or copy — all local
 - 🕹️ Two retro skins with **Light & Dark** modes; works on desktop & mobile

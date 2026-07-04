@@ -1181,6 +1181,12 @@ body {
   background: #000;
 }
 
+/* AR overlay: a transparent top layer over the feed; never intercepts clicks. */
+.ar-feed {
+  pointer-events: none;
+  background: transparent;
+}
+
 /* REC badge over the feed (mirrors .live, but recording-red). */
 .recstate {
   position: absolute;

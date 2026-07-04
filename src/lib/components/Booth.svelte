@@ -7,6 +7,8 @@
   import { sampleGifFrame } from '../gif';
   import { ensureSegmenter, segmenterReady, segment, type Mask } from '../segment';
   import { loadBackground, composite } from '../backgrounds';
+  import { ensureFaceDetector, faceReady, detectFace } from '../face';
+  import { drawOverlay } from '../overlay';
   import Countdown from './Countdown.svelte';
   import Reel from './Reel.svelte';
   import EffectGrid from './EffectGrid.svelte';
@@ -81,6 +83,15 @@
   const bgId = $derived(settings.flavor !== 'photobooth' ? settings.background || 'none' : 'none');
   const bgOn = $derived(bgId !== 'none');
   const bgActive = $derived(bgOn && camera.status === 'live' && !gridOpen && !movieMode);
+
+  // AR face overlay (PopStrip flavor): birds/hearts that orbit your head. Unlike
+  // green-screen it's an ADDITIVE top layer — it never calls renderLive(), so it
+  // isn't part of the single-renderer mutual exclusion; it simply draws over
+  // whatever base is showing. In photo modes it paints its own transparent
+  // overlay canvas; in movie mode it's baked into the recording (paintMovieFrame).
+  const arId = $derived(settings.flavor !== 'photobooth' ? settings.arOverlay || 'none' : 'none');
+  const arOn = $derived(arId !== 'none');
+  const arActive = $derived(arOn && camera.status === 'live' && !gridOpen && !movieMode);
 
   // Exactly one pixi renderer + one Sprite feed the whole app, so only ONE loop
   // may call renderLive() per frame. These deriveds are mutually exclusive by
@@ -182,6 +193,25 @@
         clearTimeout(fxToastTimer);
         fxToastTimer = setTimeout(() => (fxToast = null), 2000);
         settings.background = 'none';
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  });
+
+  // Load the face detector whenever an AR overlay is chosen and the camera is
+  // live — covering both the photo overlay loop and the movie path. On a browser
+  // without it, drop the overlay gracefully.
+  $effect(() => {
+    if (!(arOn && camera.status === 'live' && !gridOpen)) return;
+    let alive = true;
+    void ensureFaceDetector().then((ok) => {
+      if (alive && !ok) {
+        fxToast = 'Face effects aren’t supported here';
+        clearTimeout(fxToastTimer);
+        fxToastTimer = setTimeout(() => (fxToast = null), 2000);
+        settings.arOverlay = 'none';
       }
     });
     return () => {
@@ -332,6 +362,10 @@
       ctx.restore();
     }
 
+    // AR overlay (birds/hearts) baked on top of the recorded frame, so the clip —
+    // and any GIF/boomerang sampled off it below — carries the overlay too.
+    if (arOn && faceReady()) paintOverlayOnto(ctx, W, H, performance.now());
+
     // While recording, tap the just-painted frame for a possible GIF/boomerang
     // export. Reads this same canvas (no extra renderLive consumer); the sampler
     // downscales + rate-limits internally, so this is cheap every frame.
@@ -341,6 +375,7 @@
   async function startMovieLoop(gen: number): Promise<void> {
     void ensureGpu(); // warm pixi if available; CSS effects don't need it
     if (bgOn) void ensureSegmenter(); // warm the segmenter so recording opens composited
+    if (arOn) void ensureFaceDetector(); // warm the face detector so overlays record from the first frame
     const tick = (): void => {
       if (gen !== movieGen) return;
       paintMovieFrame();
@@ -410,6 +445,76 @@
     };
   });
 
+  // --- AR overlay (photo preview + baked into movie/photo) -----------------
+  // A transparent canvas layered over the feed for the live preview, plus a
+  // shared offscreen layer used to bake the overlay into the opaque movie/photo
+  // surfaces. Face tracking runs at its own cadence (in face.ts) off the pixi
+  // path, so this never adds a renderLive() consumer.
+  let arCanvasEl = $state<HTMLCanvasElement | null>(null);
+  let arGen = 0;
+  let arCtx: CanvasRenderingContext2D | null = null;
+  let arLayer: HTMLCanvasElement | null = null;
+  let arLayerCtx: CanvasRenderingContext2D | null = null;
+
+  // Bake the overlay onto an OPAQUE target (the movie canvas, or a still): draw
+  // it to a transparent offscreen layer — whose head-hole reveals the target's
+  // own head beneath — then composite that layer over the target.
+  function paintOverlayOnto(ctx: CanvasRenderingContext2D, W: number, H: number, now: number): void {
+    if (!video) return;
+    const anchor = detectFace(video, now);
+    if (!arLayer) {
+      arLayer = document.createElement('canvas');
+      arLayerCtx = arLayer.getContext('2d');
+    }
+    if (arLayer.width !== W || arLayer.height !== H) {
+      arLayer.width = W;
+      arLayer.height = H;
+    }
+    if (!arLayerCtx) return;
+    drawOverlay(arLayerCtx, arId, anchor, now, settings.mirror, W, H);
+    ctx.save();
+    ctx.filter = 'none';
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.drawImage(arLayer, 0, 0);
+    ctx.restore();
+  }
+
+  // Live preview: the overlay canvas IS the transparent layer (its head-hole
+  // reveals the feed showing through from beneath in the DOM), so we draw
+  // straight onto it — no compositing step.
+  function paintOverlayFrame(): void {
+    const canvas = arCanvasEl;
+    if (!canvas || !video || !video.videoWidth) return;
+    if (!arCtx) arCtx = canvas.getContext('2d');
+    const ctx = arCtx;
+    if (!ctx) return;
+    const now = performance.now();
+    const anchor = detectFace(video, now);
+    drawOverlay(ctx, arId, anchor, now, settings.mirror, canvas.width, canvas.height);
+  }
+
+  function startOverlayLoop(gen: number): void {
+    void ensureFaceDetector();
+    const tick = (): void => {
+      if (gen !== arGen) return;
+      paintOverlayFrame();
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+
+  $effect(() => {
+    if (arActive) {
+      const gen = ++arGen;
+      startOverlayLoop(gen);
+    } else {
+      arGen++;
+    }
+    return () => {
+      arGen++;
+    };
+  });
+
   // --- UI helpers ----------------------------------------------------------
   function pick(id: EffectId): void {
     settings.effect = id;
@@ -457,6 +562,10 @@
     <canvas bind:this={movieCanvasEl} class="gpu-feed movie-feed" width={MOVIE_W} height={MOVIE_H}></canvas>
   {:else if gpuActive}
     <canvas bind:this={gpuCanvas} class="gpu-feed"></canvas>
+  {/if}
+  {#if arActive}
+    <!-- AR overlay: a transparent top layer over whatever base is showing. -->
+    <canvas bind:this={arCanvasEl} class="gpu-feed ar-feed" width={MOVIE_W} height={MOVIE_H}></canvas>
   {/if}
   {#if recState === 'recording'}
     <div class="recstate"><span class="recdot"></span> REC <span class="rectime">{recLabel}</span></div>

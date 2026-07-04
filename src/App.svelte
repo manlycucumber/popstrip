@@ -9,6 +9,8 @@
   import { ensureGpu, hasWebGL } from './lib/gpu/renderer';
   import { ensureSegmenter, segment } from './lib/segment';
   import { loadBackground, composite } from './lib/backgrounds';
+  import { ensureFaceDetector, detectFace } from './lib/face';
+  import { drawOverlay, type OverlayId } from './lib/overlay';
   import { createRecorder, acquireMic, stopMic, canRecord, MAX_CLIP_MS, type RecorderBackend } from './lib/record';
   import { resetGifFrames, gifFrameCount, gifFrameData, GIF_W, GIF_H, GIF_DELAY_MS } from './lib/gif';
   import { shutterClick, countdownBeep } from './lib/sound';
@@ -106,16 +108,26 @@
     return settings.flavor !== 'photobooth' ? settings.background || 'none' : 'none';
   }
 
+  /** The active AR overlay id, or 'none' (only in the PopStrip flavor). */
+  function activeOverlay(): OverlayId {
+    return settings.flavor !== 'photobooth' ? settings.arOverlay || 'none' : 'none';
+  }
+
   async function fireShutter(): Promise<HTMLCanvasElement> {
     if (settings.sound) shutterClick();
     doFlash();
     const id = settings.effect;
     const g = gpuOf(id);
     // The effect + mirror bake in exactly as before; green-screen then composites
-    // the segmented person over the backdrop as a post-effect step.
+    // the segmented person over the backdrop, and AR bakes the overlay on top.
     const base = g
       ? grabGpuFrame(videoEl!, settings.mirror, g.shaderId, effectIntensity(id))
       : grabFrame(videoEl!, settings.mirror, effectCss(id));
+    return await bakeOverlay(await withBackground(base));
+  }
+
+  /** Green-screen a captured frame over the chosen backdrop (or return it as-is). */
+  async function withBackground(base: HTMLCanvasElement): Promise<HTMLCanvasElement> {
     const bgId = activeBackground();
     if (bgId === 'none') return base;
     try {
@@ -136,6 +148,36 @@
       return out;
     } catch {
       return base; // segmentation is best-effort — never fail a capture over it
+    }
+  }
+
+  /** Bake the AR overlay (birds/hearts) on top of a captured frame (or return it). */
+  async function bakeOverlay(frame: HTMLCanvasElement): Promise<HTMLCanvasElement> {
+    const arId = activeOverlay();
+    if (arId === 'none') return frame;
+    try {
+      if (!(await ensureFaceDetector())) return frame;
+      const anchor = detectFace(videoEl!, performance.now());
+      if (!anchor) return frame;
+      // Copy onto an independent 2D canvas (frame may be a GPU-backed canvas),
+      // then composite the overlay from a transparent layer so its head-hole
+      // reveals the frame's own head rather than punching a hole in the photo.
+      const out = document.createElement('canvas');
+      out.width = frame.width;
+      out.height = frame.height;
+      const octx = out.getContext('2d');
+      if (!octx) return frame;
+      octx.drawImage(frame, 0, 0);
+      const layer = document.createElement('canvas');
+      layer.width = out.width;
+      layer.height = out.height;
+      const lctx = layer.getContext('2d');
+      if (!lctx) return out;
+      drawOverlay(lctx, arId, anchor, performance.now(), settings.mirror, out.width, out.height);
+      octx.drawImage(layer, 0, 0);
+      return out;
+    } catch {
+      return frame; // AR is best-effort — never fail a capture over it
     }
   }
 
@@ -612,6 +654,7 @@
       settings.favorites,
       settings.background,
       settings.customBackground,
+      settings.arOverlay,
     ];
     saveSettings();
   });

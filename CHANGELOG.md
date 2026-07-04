@@ -5,7 +5,35 @@ Every version lands on `main`; `main` is always the deployment target for [popst
 
 ## [Unreleased]
 
-_Next toward **v3.0.0** (add-ons): **AR face overlays** — the daughter's Dizzy Birds (birds & hearts that track your head) — plus face props, frames & themes, all on-device. Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
+_Next toward **v3.0.0** (add-ons feature-complete): more AR — **face props** (glasses, hats), frames & themes, all on-device. Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
+
+## [2.3.0] — 2026-07-04 — Dizzy Birds 🐦
+
+The first **AR face effect**: little cartoon **bluebirds that circle your head**,
+tracked as you move — Photo Booth's "Dizzy," the one the booth was really built
+for. Plus **Lovestruck**, a swirl of hearts. Pick one in the PopStrip booth and
+it rides along in photos *and* movie clips (and their GIFs).
+
+### Added
+
+- **Dizzy Birds** and **Lovestruck** in the effect browser's new **Fun** section.
+  They orbit your head, pass **behind** it and back around, and follow you as you
+  move. They **stack** with any effect and any green-screen background.
+- Works in **photos and movie clips** — the overlay is baked into stills and into
+  recorded clips, so exported GIFs and boomerangs carry the birds too.
+
+### How it works
+
+- Head tracking runs **on-device** with a lightweight MediaPipe face detector,
+  self-hosted alongside the green-screen model (no CDN, nothing uploaded) and
+  lazy-loaded, so the base app is unchanged. Detection runs at a reduced cadence
+  with a smoothed, fade-on-lost anchor; the birds animate at full framerate on
+  top — never a second consumer of the effects renderer.
+
+### Notes
+
+- PopStrip flavour only (the faithful Photobooth flavour keeps Apple's exact
+  roster). Tracking works best with your face toward the camera in good light.
 
 ## [2.2.1] — 2026-07-04 — Cleaner green-screen edges ✂️
 

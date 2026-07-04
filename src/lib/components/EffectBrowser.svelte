@@ -14,6 +14,7 @@
   import { browserCategories, effect as effectOf, gpuOf, type EffectId, type FlavorId } from '../effects';
   import { settings, effectIntensity, toggleFavorite } from '../settings.svelte';
   import { BACKGROUNDS, sceneDataUri, fileToDataUrl } from '../backgrounds';
+  import { OVERLAYS } from '../overlay';
   import { cameraStream, cameraVideo } from '../camera.svelte';
   import { ensureGpu, renderLive, hasWebGL } from '../gpu/renderer';
 
@@ -178,6 +179,12 @@
   function pickBg(id: string): void {
     settings.background = id; // stays open so a backdrop + effect can be combined
   }
+
+  // --- Fun (AR face overlays) ----------------------------------------------
+  const curAr = $derived(settings.arOverlay || 'none');
+  function pickAr(id: (typeof OVERLAYS)[number]['id']): void {
+    settings.arOverlay = id; // orthogonal — stacks with any effect + background
+  }
   async function onUpload(e: Event): Promise<void> {
     const input = e.currentTarget as HTMLInputElement;
     const file = input.files?.[0];
@@ -250,6 +257,23 @@
             <span class="fxb-name">Upload</span>
             <input type="file" accept="image/*" onchange={onUpload} aria-label="Upload a background image" />
           </label>
+        </div>
+      </section>
+      <section class="fxb-section">
+        <h3 class="fxb-h">Fun <span class="fxb-h-note">face effects · photos &amp; clips</span></h3>
+        <div class="fxb-grid fxb-bg-grid">
+          {#each OVERLAYS as ov (ov.id)}
+            <button
+              class="fxb-cell fxb-bgcell"
+              class:active={curAr === ov.id}
+              onclick={() => pickAr(ov.id)}
+              aria-pressed={curAr === ov.id}
+              title={ov.label}
+            >
+              <span class="fxb-bg-glyph">{ov.glyph}</span>
+              <span class="fxb-name">{ov.label}</span>
+            </button>
+          {/each}
         </div>
       </section>
     {/if}

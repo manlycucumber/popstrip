@@ -2,6 +2,7 @@
 // Uses Svelte 5 runes; mutating `settings.*` updates the UI everywhere.
 
 import { isEffectId, gpuOf, inFlavor, type EffectId, type FlavorId } from './effects';
+import { isOverlayId, type OverlayId } from './overlay';
 
 export type Theme = 'light' | 'dark';
 export type CaptureMode = 'single' | 'quad' | 'movie';
@@ -29,6 +30,10 @@ type SettingsShape = {
   // as a downscaled on-device data URL). Applies to photos and movie clips.
   background: string;
   customBackground?: string;
+  // AR face overlay (PopStrip flavor): 'none', 'dizzy' (birds) or 'lovestruck'
+  // (hearts). Orthogonal to the effect + background — it layers on top of both,
+  // in photos and movie clips.
+  arOverlay: OverlayId;
 };
 
 const KEY = 'popstrip:settings';
@@ -67,6 +72,7 @@ export const settings = $state<SettingsShape>({
   favorites: Array.isArray(saved.favorites) ? saved.favorites.filter(isEffectId) : [],
   background: typeof saved.background === 'string' ? saved.background : 'none',
   customBackground: typeof saved.customBackground === 'string' ? saved.customBackground : undefined,
+  arOverlay: isOverlayId(saved.arOverlay) ? saved.arOverlay : 'none',
 });
 
 /** Current intensity (0..1) for an effect, falling back to its registered default. */
