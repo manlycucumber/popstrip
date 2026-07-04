@@ -1,6 +1,6 @@
 # Roadmap
 
-_Where PopStrip is headed — a faithful, modern Photo Booth for the web. Last updated: 2026-07-03_
+_Where PopStrip is headed — a faithful, modern Photo Booth for the web. Last updated: 2026-07-04_
 
 Every release ships **live** to [popstrip.app](https://popstrip.app). `v1.0.0` = **photos feature-complete**; `v2.0.0` = **video feature-complete**; add-ons are `v3.0.0`.
 
@@ -14,6 +14,7 @@ Every release ships **live** to [popstrip.app](https://popstrip.app). `v1.0.0` =
 
 ## ✅ Released
 
+- **[v2.2.1](https://github.com/manlycucumber/popstrip/releases/tag/v2.2.1) — Cleaner green-screen edges.** A quality pass on the cutout after real-camera feedback that the edge looked rough: the outline is **temporally smoothed** (steady, no shimmer), the matte is **cleaner** (solid body, background fully gone, no see-through haze, a soft rather than jagged edge), and the live mask runs at a **higher resolution** with a size-scaled feather. No new features and no bundle-size change — the existing backdrops just look cleaner in both photos and clips. Still bounded by the on-device selfie model (a clean natural cutout, not a pixel-perfect chroma key).
 - **[v2.2.0](https://github.com/manlycucumber/popstrip/releases/tag/v2.2.0) — Green screen in movies.** Green-screen backdrops now composite into **recorded movie clips**, not just photos — the live movie preview shows the final composite, so what you record is what you see, and GIF/boomerang exports inherit the background too. Same on-device, self-hosted MediaPipe segmentation, lazy-loaded so the base bundle is unchanged; segmentation runs at a reduced cadence with last-good-mask reuse to keep recording smooth. Also fixes a 4-up green-screen photo aliasing bug. PopStrip flavour.
 - **[v2.1.0](https://github.com/manlycucumber/popstrip/releases/tag/v2.1.0) — Green screen.** Replace your background with a built-in scene (Green screen, Sunset, Beach, Space, Studio, Party) or your own uploaded image — composited live in the booth and into photos, and it **stacks with any effect**. Runs **entirely on-device** via self-hosted MediaPipe segmentation (WASM + model, no CDN, nothing uploaded); the engine is lazy-loaded so the base bundle is unchanged. PopStrip flavour; photos first, movie clips to follow. The first add-on toward the v3.0.0 major.
 - **[v2.0.0](https://github.com/manlycucumber/popstrip/releases/tag/v2.0.0) — Video, feature-complete.** The graduation major: **movie clips**, **real mp4 on every capable browser**, and **GIF & boomerang** exports are now a complete, stable capture mode standing alongside photos — the same milestone marker **v1.0.0** was for photos. No capture code changed; photos & clips are byte-for-byte identical to v1.6.0. Next: add-ons (green-screen + AR) at v3.0.0.

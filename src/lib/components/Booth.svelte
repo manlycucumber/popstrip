@@ -150,7 +150,7 @@
   let lastMask: Mask | null = null;
   let lastMaskAt = 0;
   const MASK_INTERVAL_MS = 66; // ~15fps segmentation; frames in between reuse the last mask
-  const SEG_MAX = 320; // cap the live segmentation input — the mask is upsampled to the source size
+  const SEG_MAX = 480; // cap the live segmentation input — a finer mask upsamples more smoothly (the model resizes internally, so this is nearly free)
 
   // Keep the backdrop image loaded for the current id (async, cached).
   $effect(() => {

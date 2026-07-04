@@ -162,14 +162,21 @@ function buildMaskCanvas(mask: Mask): HTMLCanvasElement | null {
   }
   const px = maskImg.data;
   const src = mask.data;
+  // Remap the raw confidence into a cleaner matte instead of a linear ramp:
+  // fully transparent below LO (kills the low-confidence background haze/speckle
+  // that reads as "rough"), fully opaque above HI (a solid body, no ghosting),
+  // with a smoothstep in between for a soft — not jagged — edge.
+  const LO = 0.22;
+  const HI = 0.55;
+  const span = HI - LO;
   for (let i = 0; i < src.length; i++) {
-    const v = src[i];
-    const a = v <= 0 ? 0 : v >= 1 ? 255 : (v * 255) | 0;
+    let t = (src[i] - LO) / span;
+    t = t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t);
     const j = i << 2;
     px[j] = 255;
     px[j + 1] = 255;
     px[j + 2] = 255;
-    px[j + 3] = a;
+    px[j + 3] = (t * 255) | 0;
   }
   maskCtx.putImageData(maskImg, 0, 0);
   builtMaskRef = mask;
@@ -221,7 +228,10 @@ export function composite(
   cctx.drawImage(fg, 0, 0, W, H);
   if (maskCanvas) {
     cctx.globalCompositeOperation = 'destination-in';
-    cctx.filter = 'blur(1.5px)'; // soften the cutout edge (no-op if unsupported)
+    // Feather scales with the output size so the soft edge looks consistent
+    // whether compositing a small live preview or a full-res still (no-op if
+    // the browser doesn't support canvas filters).
+    cctx.filter = `blur(${Math.max(1.5, W / 380).toFixed(2)}px)`;
     if (mirror) {
       cctx.translate(W, 0);
       cctx.scale(-1, 1);

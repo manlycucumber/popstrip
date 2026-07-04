@@ -7,6 +7,30 @@ Every version lands on `main`; `main` is always the deployment target for [popst
 
 _Next toward **v3.0.0** (add-ons): **AR face overlays** — the daughter's Dizzy Birds (birds & hearts that track your head) — plus face props, frames & themes, all on-device. Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
 
+## [2.2.1] — 2026-07-04 — Cleaner green-screen edges ✂️
+
+A quality pass on the green-screen cutout, driven by real-camera feedback that
+the edge looked rough. No new features — the existing backdrops just look
+cleaner, in both photos and clips.
+
+### Improved
+
+- **Steadier edges.** The person's outline was jittering frame to frame; it's now
+  temporally smoothed (blended with the previous frame) so it holds still instead
+  of shimmering.
+- **A cleaner matte.** The cutout now reads as a solid body with the background
+  fully gone — no more faint see-through haze or speckle around the silhouette —
+  and a soft, controlled edge rather than a hard jagged one.
+- **A finer mask.** The live segmentation runs at a higher resolution and the edge
+  feather scales with the output size, so the boundary looks consistent from small
+  preview to full-resolution capture. (The model resizes internally, so this stays
+  nearly free.)
+
+### Notes
+
+- Segmentation quality is still bounded by the on-device selfie model — the goal
+  here is a clean, natural-looking cutout, not a pixel-perfect chroma key.
+
 ## [2.2.0] — 2026-07-03 — Green screen, now in movies 🎬🟢
 
 Green screen graduates from photos to **movie clips**. Pick a backdrop in the

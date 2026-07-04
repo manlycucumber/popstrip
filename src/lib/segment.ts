@@ -64,6 +64,23 @@ export function segmenterReady(): boolean {
 let personIndex = -1;
 let invert = false;
 
+// Temporal smoothing: the raw per-frame mask jitters at the edges (reads as
+// "rough"), so we blend each frame with the previous one (exponential moving
+// average) when the resolution matches. Higher = more responsive/less lag,
+// lower = smoother/less flicker. Reset when the dimensions change (e.g. the live
+// preview runs downscaled while a still capture segments full-res).
+let emaPrev: Float32Array | null = null;
+let emaW = 0;
+let emaH = 0;
+const EMA_ALPHA = 0.6;
+
+/** Drop the temporal-smoothing history (call when the source stream changes). */
+export function resetMaskSmoothing(): void {
+  emaPrev = null;
+  emaW = 0;
+  emaH = 0;
+}
+
 // Mean mask value in a centred box vs the outer frame — sub-sampled so it's cheap
 // even at full mask resolution, and resolution-independent.
 function regionMeans(data: Float32Array, w: number, h: number): { center: number; edge: number } {
@@ -115,13 +132,28 @@ function pickForeground(masks: MPMask[]): Mask | null {
   }
   const m = masks[personIndex] ?? masks[0];
   const src = m.getAsFloat32Array();
+  const w = m.width;
+  const h = m.height;
   const data = new Float32Array(src.length);
   if (invert) {
     for (let i = 0; i < src.length; i++) data[i] = 1 - src[i];
   } else {
     data.set(src);
   }
-  return { data, width: m.width, height: m.height };
+  // Blend with the previous mask (same size) to quiet edge flicker.
+  if (emaPrev && emaW === w && emaH === h && emaPrev.length === data.length) {
+    const p = emaPrev;
+    for (let i = 0; i < data.length; i++) {
+      const s = p[i] + EMA_ALPHA * (data[i] - p[i]);
+      data[i] = s;
+      p[i] = s;
+    }
+  } else {
+    emaPrev = data.slice();
+    emaW = w;
+    emaH = h;
+  }
+  return { data, width: w, height: h };
 }
 
 /**
