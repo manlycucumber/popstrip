@@ -5,8 +5,12 @@
   "photoBoothVersion": null,
   "camera": "OBS Virtual Camera",
   "chart": { "width": 640, "height": 480, "source": "render.html drawChart() → out/chart.png" },
-  "notes": "Slider values below are the Photo Booth distortion-slider position used per effect (0..1, matched into render via window.__intensities). Color/stylize effects have no slider.",
+  "notes": "Slider values below are the Photo Booth distortion-slider position used per effect (0..1, matched into render via window.__intensities). Colour + stylize effects have no slider. Vintage is a PopStrip-original effect with no Photo Booth equivalent — it renders in out/ for visual QA but has no reference, so it is not captured here.",
   "effects": {
+    "bw":      { "slider": null },
+    "sepia":   { "slider": null },
+    "pop":     { "slider": null },
+    "thermal": { "slider": null },
     "bulge":   { "slider": null },
     "dent":    { "slider": null },
     "twirl":   { "slider": null },

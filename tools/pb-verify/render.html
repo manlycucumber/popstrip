@@ -2,11 +2,13 @@
 <!--
   PopStrip effect renderer for the accuracy harness.
 
-  Renders each GPU effect against a fixed, deterministic 4:3 test chart using the
-  REAL production shaders (../../src/lib/gpu/shaders.ts) via pixi — the same GLSL
-  path the app ships. Served by the Vite dev server; driven headlessly by
-  render.mjs (Playwright), or open it in a browser and click "Download all" for a
-  manual run.
+  Renders every effect against a fixed, deterministic 4:3 test chart using the REAL
+  production code — GPU effects through ../../src/lib/gpu/shaders.ts via pixi (the
+  same GLSL the app ships), and the CSS colour effects through their real
+  effectCss() strings via canvas ctx.filter (Pop Art / Thermal resolve the same SVG
+  filters as the app, inlined below). Served by the Vite dev server; driven
+  headlessly by render.mjs (Playwright), or open it in a browser and click
+  "Download all" for a manual run.
 
   Output is exposed on window.__render = { chart, effects: {id: pngDataURL}, meta }.
   The SAME chart is what the Mac side must feed into Photo Booth (via OBS virtual
@@ -24,6 +26,32 @@
     </style>
   </head>
   <body>
+    <!-- The same SVG filters the app ships (FxDefs.svelte), so Pop Art / Thermal
+         resolve via ctx.filter = url(#…) here exactly as in production. -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+      <defs>
+        <filter id="ps-pop" color-interpolation-filters="sRGB">
+          <feColorMatrix type="saturate" values="2.1" />
+          <feComponentTransfer>
+            <feFuncR type="discrete" tableValues="0 0.30 0.58 0.85 1" />
+            <feFuncG type="discrete" tableValues="0 0.30 0.58 0.85 1" />
+            <feFuncB type="discrete" tableValues="0 0.30 0.58 0.85 1" />
+          </feComponentTransfer>
+        </filter>
+        <filter id="ps-thermal" color-interpolation-filters="sRGB">
+          <feColorMatrix type="matrix"
+            values="0.299 0.587 0.114 0 0
+                    0.299 0.587 0.114 0 0
+                    0.299 0.587 0.114 0 0
+                    0     0     0     1 0" />
+          <feComponentTransfer>
+            <feFuncR type="table" tableValues="0 0.10 0.35 0.75 1 1" />
+            <feFuncG type="table" tableValues="0 0.15 0.60 0.85 0.70 0.95" />
+            <feFuncB type="table" tableValues="0.35 0.75 0.90 0.35 0.10 0.05" />
+          </feComponentTransfer>
+        </filter>
+      </defs>
+    </svg>
     <button id="dl">Download all</button>
     <pre id="status">rendering…</pre>
     <div id="thumbs"></div>
@@ -74,6 +102,30 @@
       drawChart(chart.getContext('2d'));
       const chartUrl = chart.toDataURL('image/png');
 
+      const effects = {};
+      const thumbs = document.getElementById('thumbs');
+      const addThumb = (id, url, note) => {
+        const fig = document.createElement('figure');
+        const img = new Image(); img.src = url; img.style.width = '160px';
+        const cap = document.createElement('figcaption'); cap.textContent = note ? id + ' ' + note : id;
+        fig.append(img, cap); thumbs.appendChild(fig);
+      };
+
+      // CSS colour effects (B&W, Sepia, Pop Art, Thermal, Vintage) — no WebGL:
+      // rendered through the SAME effectCss() strings the app bakes into photos,
+      // via canvas ctx.filter (Pop Art / Thermal resolve the inlined SVG filters).
+      for (const e of EFFECTS) {
+        if (e.kind !== 'css' || e.id === 'normal') continue;
+        const c = document.createElement('canvas'); c.width = W; c.height = H;
+        const cx = c.getContext('2d');
+        cx.filter = e.css;
+        cx.drawImage(chart, 0, 0);
+        cx.filter = 'none';
+        const url = c.toDataURL('image/png');
+        effects[e.id] = url;
+        addThumb(e.id, url, '(css)');
+      }
+
       try {
       const renderer = await autoDetectRenderer({ preference: 'webgl', width: W, height: H, antialias: true, backgroundAlpha: 0, resolution: 1 });
       const texture = Texture.from(chart);
@@ -90,15 +142,10 @@
         return canvas.toDataURL('image/png');
       }
 
-      const effects = {};
-      const thumbs = document.getElementById('thumbs');
       for (const id of Object.keys(FRAGMENTS)) {
         const url = renderEffect(id, intensities[id] ?? 0.6);
         effects[id] = url;
-        const fig = document.createElement('figure');
-        const img = new Image(); img.src = url; img.style.width = '160px';
-        const cap = document.createElement('figcaption'); cap.textContent = id + ' @ ' + (intensities[id] ?? 0.6);
-        fig.append(img, cap); thumbs.appendChild(fig);
+        addThumb(id, url, '@ ' + (intensities[id] ?? 0.6));
       }
 
       window.__render = { chart: chartUrl, effects, count: Object.keys(effects).length, meta: { W, H, intensities } };
@@ -112,7 +159,7 @@
       } catch (e) {
         // Fail loud (headless render.mjs polls for this) instead of a blank timeout.
         const msg = (e && e.message) || String(e);
-        window.__render = { chart: chartUrl, effects: {}, error: msg, count: 0 };
+        window.__render = { chart: chartUrl, effects, error: msg, count: Object.keys(effects).length };
         document.getElementById('status').textContent = 'ERROR: ' + msg;
         throw e;
       }

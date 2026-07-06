@@ -44,6 +44,14 @@ distortions set the slider and write the value down**, and take a photo.
 | our id  | Photo Booth effect | slider? |
 |---------|--------------------|---------|
 | _calib  | Normal (no effect) | —       |
+| bw      | Black & White      | no      |
+| sepia   | Sepia              | no      |
+| pop     | Pop Art            | no      |
+| thermal | Thermal Camera     | no      |
+| comic   | Comic Book         | no      |
+| glow    | Glow               | no      |
+| xray    | X-Ray              | no      |
+| pencil  | Colored Pencil     | no      |
 | bulge   | Bulge              | yes     |
 | dent    | Dent               | yes     |
 | twirl   | Twirl              | yes     |
@@ -52,13 +60,10 @@ distortions set the slider and write the value down**, and take a photo.
 | tunnel  | Light Tunnel       | yes     |
 | fisheye | Fish Eye           | yes     |
 | stretch | Stretch            | yes     |
-| comic   | Comic Book         | no      |
-| glow    | Glow               | no      |
-| xray    | X-Ray              | no      |
-| pencil  | Colored Pencil     | no      |
 
-(The CSS effects — Sepia, Black & White, Pop Art, Thermal Camera — aren't in the
-harness yet; the accuracy-critical GPU warps + stylize are. See README "Notes".)
+(17 effects total — the 4 colour + 4 stylize + 8 distortions that map to Photo
+Booth. **Vintage** is a PopStrip-original with no Photo Booth equivalent, so don't
+capture it — it still renders in `out/` for visual QA and shows as `no-reference`.)
 
 ## 4. Collect the captures into `raw/<id>.png`
 Photo Booth saves JPEGs to `~/Pictures/Photo Booth Library/Pictures/`. Copy the 13

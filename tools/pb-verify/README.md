@@ -15,8 +15,10 @@ a **fully repeatable render + compare** (any OS, CI-able).
 ```
 
 ## Files
-- `render.html` — draws the deterministic 4:3 **test chart** and renders every GPU
-  effect through the **real** `src/lib/gpu/shaders.ts` via pixi. Open in a browser
+- `render.html` — draws the deterministic 4:3 **test chart** and renders every
+  effect through the **real** production code: the GPU shaders (`src/lib/gpu/shaders.ts`)
+  via pixi, and the CSS colour effects (`effectCss()`) via canvas `ctx.filter` (Pop
+  Art / Thermal resolve the same `FxDefs` SVG filters, inlined). Open in a browser
   (click *Download all*) or drive headlessly with `render.mjs`. This is the same
   chart the Mac side feeds Photo Booth. The chart carries **three distinct corner
   marks** (orange TL / teal TR / violet BL) that `crop-refs.mjs` keys on.
@@ -61,10 +63,10 @@ Light Tunnel ring-freeze vs triangle-fold · Pop Art single vs Warhol tiles ·
 exact aspect (4:3 vs 3:2) + pixel dims · 4-up inter-frame interval.
 
 ## Notes
-- Currently covers the **GPU** effects (the accuracy-critical warps + stylize).
-  CSS effects (Sepia, Pop Art, Thermal, …) can be added to `render.html` by
-  applying `effectCss(id)` via canvas `ctx.filter` (Pop Art/Thermal need the
-  `FxDefs` SVG inlined). 
+- Covers all 17 effects that map to Photo Booth — 4 colour (B&W, Sepia, Pop Art,
+  Thermal Camera) + 4 stylize (Comic Book, Glow, X-Ray, Colored Pencil) + 8
+  distortions. **Vintage** is a PopStrip-original (no Photo Booth equivalent): it
+  renders in `out/` for visual QA but has no reference to score against.
 - Metrics are coarse whole-image measures for now (great for ranking + regression
   gating). Refinements once refs exist: align via the green corner marks, windowed
   SSIM, patch-only CIEDE2000 on the color band.
