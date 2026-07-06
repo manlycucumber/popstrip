@@ -1,0 +1,23 @@
+{
+  "_comment": "Provenance for the committed Photo Booth reference images in this folder. Filled in during the one-time Mac capture (see ../MAC-CAPTURE.md). The refs/*.png beside this file are what compare.mjs scores our shaders against.",
+  "capturedOn": null,
+  "macosVersion": null,
+  "photoBoothVersion": null,
+  "camera": "OBS Virtual Camera",
+  "chart": { "width": 640, "height": 480, "source": "render.html drawChart() → out/chart.png" },
+  "notes": "Slider values below are the Photo Booth distortion-slider position used per effect (0..1, matched into render via window.__intensities). Color/stylize effects have no slider.",
+  "effects": {
+    "bulge":   { "slider": null },
+    "dent":    { "slider": null },
+    "twirl":   { "slider": null },
+    "squeeze": { "slider": null },
+    "mirror":  { "slider": null },
+    "tunnel":  { "slider": null },
+    "fisheye": { "slider": null },
+    "stretch": { "slider": null },
+    "comic":   { "slider": null },
+    "glow":    { "slider": null },
+    "xray":    { "slider": null },
+    "pencil":  { "slider": null }
+  }
+}

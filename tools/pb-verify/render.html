@@ -59,14 +59,22 @@
         ctx.beginPath(); ctx.moveTo(W, 60); ctx.lineTo(0, H); ctx.stroke();
         ctx.strokeStyle = '#ff2e88'; ctx.lineWidth = 5;
         for (let r = 40; r < 220; r += 40) { ctx.beginPath(); ctx.arc(W/2, (H+60)/2, r, 0, Math.PI*2); ctx.stroke(); }
-        ctx.fillStyle = '#0f0'; // corner register marks
-        for (const [cx, cy] of [[10,70],[W-10,70],[10,H-10],[W-10,H-10]]) { ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI*2); ctx.fill(); }
+        // Registration marks in THREE distinct, well-separated colours (absent from
+        // the chart content) at TL/TR/BL. crop-refs.mjs finds them by colour and
+        // solves an affine map, so it auto-corrects Photo Booth's mirror + framing.
+        // Keep these {x,y,colour} in sync with MARKS in crop-refs.mjs.
+        for (const [cx, cy, col] of [[22,72,'#ff7a00'],[W-22,72,'#00b3a4'],[22,H-22,'#8a2be2']]) {
+          ctx.fillStyle = col; ctx.beginPath(); ctx.arc(cx, cy, 12, 0, Math.PI*2); ctx.fill();
+          ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.stroke();
+        }
       }
 
       const chart = document.createElement('canvas');
       chart.width = W; chart.height = H;
       drawChart(chart.getContext('2d'));
+      const chartUrl = chart.toDataURL('image/png');
 
+      try {
       const renderer = await autoDetectRenderer({ preference: 'webgl', width: W, height: H, antialias: true, backgroundAlpha: 0, resolution: 1 });
       const texture = Texture.from(chart);
       const sprite = new Sprite(texture); sprite.anchor.set(0.5); sprite.position.set(W / 2, H / 2);
@@ -84,7 +92,6 @@
 
       const effects = {};
       const thumbs = document.getElementById('thumbs');
-      const chartUrl = chart.toDataURL('image/png');
       for (const id of Object.keys(FRAGMENTS)) {
         const url = renderEffect(id, intensities[id] ?? 0.6);
         effects[id] = url;
@@ -94,7 +101,7 @@
         fig.append(img, cap); thumbs.appendChild(fig);
       }
 
-      window.__render = { chart: chartUrl, effects, meta: { W, H, intensities, count: Object.keys(effects).length } };
+      window.__render = { chart: chartUrl, effects, count: Object.keys(effects).length, meta: { W, H, intensities } };
       document.getElementById('status').textContent = 'rendered ' + Object.keys(effects).length + ' effects @ ' + W + '×' + H;
 
       document.getElementById('dl').onclick = () => {
@@ -102,6 +109,13 @@
         save('chart.png', chartUrl);
         for (const [id, url] of Object.entries(effects)) save('ours-' + id + '.png', url);
       };
+      } catch (e) {
+        // Fail loud (headless render.mjs polls for this) instead of a blank timeout.
+        const msg = (e && e.message) || String(e);
+        window.__render = { chart: chartUrl, effects: {}, error: msg, count: 0 };
+        document.getElementById('status').textContent = 'ERROR: ' + msg;
+        throw e;
+      }
     </script>
   </body>
 </html>

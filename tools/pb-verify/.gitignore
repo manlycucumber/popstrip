@@ -1,4 +1,5 @@
 out/
+raw/
 scores.json
 report.html
 node_modules/

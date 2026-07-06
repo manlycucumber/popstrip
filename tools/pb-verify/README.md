@@ -18,42 +18,42 @@ a **fully repeatable render + compare** (any OS, CI-able).
 - `render.html` — draws the deterministic 4:3 **test chart** and renders every GPU
   effect through the **real** `src/lib/gpu/shaders.ts` via pixi. Open in a browser
   (click *Download all*) or drive headlessly with `render.mjs`. This is the same
-  chart the Mac side must feed Photo Booth.
-- `render.mjs` — Playwright driver → writes `out/ours-<id>.png` + `out/chart.png`.
+  chart the Mac side feeds Photo Booth. The chart carries **three distinct corner
+  marks** (orange TL / teal TR / violet BL) that `crop-refs.mjs` keys on.
+- `render.mjs` — Playwright driver → `out/ours-<id>.png` + `out/chart.png`. Launches
+  Chromium with software WebGL (SwiftShader) so it renders headlessly / in CI, and
+  reads the Photo Booth slider values from `refs/manifest.json` so our shaders match.
+- `crop-refs.mjs` — turns raw Photo Booth captures (`raw/<id>.png`) into aligned
+  references (`refs/<id>.png`): finds the corner marks in a no-effect calibration
+  frame, solves an affine map (auto-correcting Photo Booth's **mirror** + framing),
+  and resamples every capture onto the canonical 640×480 grid.
 - `compare.mjs` — per-effect SSIM (luma) + MAE (color) + edge-IoU (warp) vs
   `refs/<id>.png` → `scores.json` (honors `thresholds.json`; exits non-zero under
   `CI` if any effect fails).
 - `report.mjs` — `scores.json` + images → `report.html` (ref | ours | metrics).
 - `thresholds.json` — pass bars per effect (calibrate on first real run, then freeze).
 - `refs/` — Photo Booth reference PNGs (committed) + `manifest.json` (macOS/PB
-  version, grid positions, slider values used). **Populated in the Mac session.**
-- `out/`, `scores.json`, `report.html` — generated (git-ignored).
+  version + per-effect slider values). Populated in the one-time Mac session.
+- `MAC-CAPTURE.md` — the turnkey step-by-step for that Mac session.
+- `out/`, `raw/`, `scores.json`, `report.html` — generated (git-ignored).
 
-## Run the repeatable side (works today, minus references)
+## Run the repeatable side (validated on Windows; CI-ready)
 ```bash
 npm i -D playwright pngjs && npx playwright install chromium
-npm run dev                         # serve the app (separate terminal)
-node tools/pb-verify/render.mjs     # → out/ours-*.png  (real shaders)
-node tools/pb-verify/compare.mjs    # → scores.json     (needs refs/ to score)
-node tools/pb-verify/report.mjs     # → report.html
+npm run dev             # serve the app (separate terminal)
+npm run verify:render   # → out/ours-*.png + out/chart.png  (real shaders, headless)
+npm run verify:effects  # → scores.json + report.html
 ```
-Until references exist, compare reports every effect as `no-reference` — the
-render + report still work, so you can visually diff `out/` immediately.
+Until references exist, compare reports every effect as `no-reference` — the render
++ report still work, so you can visually diff `out/` immediately. Once you have raw
+Photo Booth captures, `npm run verify:crop` builds the aligned `refs/`.
 
-## One-time Mac capture (deferred)
-1. Install **OBS** + start **OBS Virtual Camera**; set an Image source to the
-   chart (`out/chart.png`, produced by `render.mjs`, or *Download all* → `chart.png`).
-2. Open **Photo Booth**, choose the **OBS Virtual Camera** as its camera. The
-   chart now fills the frame — no lighting/pose variance.
-3. For each effect: open the Effects grid, click the effect, note the distortion
-   **slider** position, take a picture. Photo Booth auto-saves to
-   `~/Pictures/Photo Booth Library/Pictures/`.
-4. Crop to the frame (use the green corner marks), save as `refs/<id>.png`, and
-   record the slider value + macOS/PB version + grid position in
-   `refs/manifest.json`. (`capture-pb.applescript` can automate the click+shoot+
-   rename loop; a semi-manual pass is fine since it's done once.)
-5. Feed the recorded slider values back to the render via `window.__intensities`
-   so both sides use the same strength, then calibrate `thresholds.json`.
+## One-time Mac capture
+See **[MAC-CAPTURE.md](./MAC-CAPTURE.md)** — feed `out/chart.png` into Photo Booth
+via an OBS virtual camera, shoot a no-effect calibration frame + one frame per
+effect, drop them in `raw/`, then `npm run verify:crop` aligns them into `refs/`.
+Record the slider values in `refs/manifest.json`, re-run `verify:render` +
+`verify:effects`, and calibrate `thresholds.json`.
 
 ## Open accuracy questions this answers (see the plan)
 Dent = `CIBumpDistortion`-negative vs `CIPinchDistortion` · Squeeze radius ·

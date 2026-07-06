@@ -15,11 +15,14 @@
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "deploy": "bash scripts/deploy.sh",
     "verify:render": "node tools/pb-verify/render.mjs",
+    "verify:crop": "node tools/pb-verify/crop-refs.mjs",
     "verify:effects": "node tools/pb-verify/compare.mjs && node tools/pb-verify/report.mjs"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.1.2",
     "@tsconfig/svelte": "^5.0.8",
+    "playwright": "^1.61.1",
+    "pngjs": "^7.0.0",
     "svelte": "^5.56.4",
     "svelte-check": "^4.7.1",
     "typescript": "^6.0.3",
