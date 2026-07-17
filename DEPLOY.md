@@ -1,16 +1,10 @@
 # Deploying PopStrip
 
-PopStrip is a **static site** — a production build is just files in `dist/`. It runs on DreamHost shared hosting with no backend. HTTPS is required (the camera won't work without it) and DreamHost provides it automatically via Let's Encrypt.
-
-## One-time DreamHost setup
-
-1. Point `popstrip.app` at DreamHost and add the domain in the panel.
-2. Enable the **free Let's Encrypt SSL** certificate for the domain (Panel → Websites → Secure Certificates). Wait until `https://popstrip.app` loads with a padlock.
-3. Make sure you have **SSH/SFTP** access (Panel → Websites → SFTP users). Note your SSH user and host.
+PopStrip is a **static site** — a production build is just the files in `dist/`. It runs on any static web host with no backend. **HTTPS is required** (the camera needs a secure context); most hosts provide it via Let's Encrypt, and it also works behind a CDN/proxy that terminates TLS.
 
 ## Build & deploy
 
-One command — builds and ships:
+One command — builds and ships over SSH:
 
 ```bash
 npm run deploy
@@ -19,33 +13,34 @@ npm run deploy
 It reads the target from a git-ignored **`scripts/deploy.env`** (never committed):
 
 ```bash
-DH_HOST=popstrip@iad1-shared-b7-37.dreamhost.com
-DH_PATH='~/popstrip.app'   # quote the ~ so it expands on the server, not locally
+DEPLOY_HOST=user@your-host                    # SSH target
+DEPLOY_PATH=~/web/popstrip.app/public_html    # the web docroot on that host
 ```
 
-The script uses `rsync` when available and otherwise falls back to `scp` (Windows / Git Bash has no rsync). It needs an SSH key already authorized for `DH_HOST` — set that up once with:
-
-```bash
-# from PowerShell / Git Bash
-type $HOME/.ssh/id_ed25519.pub | ssh DH_HOST "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
-```
+The legacy `DH_HOST` / `DH_PATH` names are still accepted as aliases. It needs an SSH key already authorized for `DEPLOY_HOST` (passwordless), uses `rsync` when available, and falls back to `scp` otherwise (Git Bash has no rsync).
 
 Manual equivalent (SFTP / WinSCP / Cyberduck works too — upload everything inside `dist/`, including `.htaccess`):
 
 ```bash
 npm run build
-cd dist && scp -r . DH_HOST:~/popstrip.app/
+cd dist && scp -r . DEPLOY_HOST:~/web/popstrip.app/public_html/
 ```
 
-## Behind Cloudflare
+## Web-server config — pick the one for your host
 
-`popstrip.app` is fronted by **Cloudflare** (proxied) with DreamHost as the origin (`67.205.31.251`). Two things to keep true:
+The app is a single-page PWA. Two things must be right on the origin: the `.wasm` MIME type (`application/wasm`, or MediaPipe breaks) and a cache policy that lets `sw.js` / `index.html` revalidate while content-hashed `/assets/*` stay immutable.
 
-- Cloudflare **SSL/TLS mode = Full (strict)** — DreamHost serves a valid Let's Encrypt cert on the origin, so Cloudflare should talk to it over HTTPS.
-- The proxied `A popstrip.app` record points at the DreamHost web IP. Deploys don't touch DNS — they only replace files in the web root, so the edge picks them up on the next request (HTML is always revalidated).
+- **Apache** hosts: `public/.htaccess` (shipped inside `dist/`) handles WASM MIME, the SPA fallback, and caching automatically.
+- **nginx** hosts (nginx serves static files directly, so `.htaccess` is ignored): install **`deploy/nginx-popstrip.conf`** as a per-domain include (e.g. a HestiaCP `nginx.ssl.conf_*` file) or fold it into the server block, then reload nginx. Modern nginx already maps `application/wasm`; the include adds the `sw.js`/`index.html` cache overrides.
+
+## Behind a CDN / Cloudflare
+
+`popstrip.app` is fronted by **Cloudflare** (proxied). Keep two things true:
+
+- The origin serves **valid HTTPS**, so Cloudflare's Full (or Full-strict) mode is satisfied.
+- Content-hashed `/assets/*` are cached forever; `index.html` + `sw.js` revalidate — so a redeploy (with a bumped `sw.js` `CACHE`) reaches clients on the next navigation.
 
 ## Notes
 
-- **`.htaccess`** (shipped in `dist/` from `public/`) handles SPA routing, the `.wasm` MIME type, and caching. If `.wasm` ever 404s with a MIME error, confirm `AddType application/wasm .wasm` is being honored.
-- **Cache:** hashed `assets/*` are cached forever; `index.html` is always revalidated, so a redeploy goes live immediately.
-- **Camera needs HTTPS** — verify the padlock after DNS/SSL propagate (10–30 min).
+- **Camera needs HTTPS** — verify the padlock after any DNS/SSL change.
+- **Black screen right after a deploy** → suspect a stale service worker first. Test in incognito (fresh SW/cache); content-hashed assets + a revalidated shell mean new code ships on the next navigation anyway.
