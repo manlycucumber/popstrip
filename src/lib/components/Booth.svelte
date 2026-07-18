@@ -8,7 +8,7 @@
   import { ensureSegmenter, segmenterReady, segment, type Mask } from '../segment';
   import { loadBackground, composite } from '../backgrounds';
   import { ensureFaceDetector, faceReady, detectFace } from '../face';
-  import { drawAR } from '../overlay';
+  import { drawAR, ensureOverlayDraw } from '../overlay';
   import { drawFrame } from '../frames';
   import Countdown from './Countdown.svelte';
   import Reel from './Reel.svelte';
@@ -93,7 +93,8 @@
   // (paintMovieFrame). arOverlay + faceProp are orthogonal and can stack.
   const arOverlayId = $derived(settings.flavor !== 'photobooth' ? settings.arOverlay || 'none' : 'none');
   const facePropId = $derived(settings.flavor !== 'photobooth' ? settings.faceProp || 'none' : 'none');
-  const arOn = $derived(arOverlayId !== 'none' || facePropId !== 'none');
+  const facePaintId = $derived(settings.flavor !== 'photobooth' ? settings.facePaint || 'none' : 'none');
+  const arOn = $derived(arOverlayId !== 'none' || facePropId !== 'none' || facePaintId !== 'none');
   const arActive = $derived(arOn && camera.status === 'live' && !gridOpen && !movieMode);
 
   // Decorative frame (PopStrip flavor): a border drawn around the picture. Also
@@ -217,6 +218,7 @@
   $effect(() => {
     if (!(arOn && camera.status === 'live' && !gridOpen)) return;
     let alive = true;
+    void ensureOverlayDraw(); // warm the painter chunk alongside the detector
     void ensureFaceDetector().then((ok) => {
       if (alive && !ok) {
         fxToast = 'Face effects aren’t supported here';
@@ -224,6 +226,7 @@
         fxToastTimer = setTimeout(() => (fxToast = null), 2000);
         settings.arOverlay = 'none';
         settings.faceProp = 'none';
+        settings.facePaint = 'none';
       }
     });
     return () => {
@@ -391,7 +394,10 @@
   async function startMovieLoop(gen: number): Promise<void> {
     void ensureGpu(); // warm pixi if available; CSS effects don't need it
     if (bgOn) void ensureSegmenter(); // warm the segmenter so recording opens composited
-    if (arOn) void ensureFaceDetector(); // warm the face detector so overlays record from the first frame
+    if (arOn) {
+      void ensureFaceDetector(); // warm the detector so overlays record from the first frame
+      void ensureOverlayDraw(); // …and the painter chunk
+    }
     const tick = (): void => {
       if (gen !== movieGen) return;
       paintMovieFrame();
@@ -487,7 +493,7 @@
       arLayer.height = H;
     }
     if (!arLayerCtx) return;
-    drawAR(arLayerCtx, arOverlayId, facePropId, anchor, now, settings.mirror, W, H);
+    drawAR(arLayerCtx, arOverlayId, facePropId, facePaintId, anchor, now, settings.mirror, W, H);
     ctx.save();
     ctx.filter = 'none';
     ctx.globalCompositeOperation = 'source-over';
@@ -506,7 +512,7 @@
     if (!ctx) return;
     const now = performance.now();
     const anchor = detectFace(video, now);
-    drawAR(ctx, arOverlayId, facePropId, anchor, now, settings.mirror, canvas.width, canvas.height);
+    drawAR(ctx, arOverlayId, facePropId, facePaintId, anchor, now, settings.mirror, canvas.width, canvas.height);
   }
 
   function startOverlayLoop(gen: number): void {

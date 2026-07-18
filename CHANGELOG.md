@@ -7,6 +7,33 @@ Every version lands on `main`; `main` is always the deployment target for [popst
 
 _Next toward **v3.0.0** (add-ons feature-complete): stickers, print, then graduate. Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
 
+## [2.7.0] — 2026-07-18 — Face paint 🎨
+
+Paint your face. A new **Face paint** row in the PopStrip effect browser adds
+seven face-tracked, painted-on designs that follow your head — stacking with any
+effect, backdrop, orbiting birds/hearts, and props.
+
+### Added
+
+- Seven designs: **Butterfly**, **Unicorn**, **Tiger**, **Kitty**, **Superhero**,
+  **Rainbow**, and **Stars** — painted on your cheeks, forehead and nose, and
+  baked into **photos and movie clips** (GIFs/boomerangs too).
+- **Orthogonal** to everything: paint your face AND wear shades AND have birds
+  circling, all at once.
+
+### How it works
+
+- Drawn **procedurally** (no image assets) from the same lightweight head anchor
+  (centre, size, tilt) the other face effects use — **no new model or download**.
+- The whole AR painter set (paint, orbits, props) is now a **lazily-loaded chunk**
+  that downloads only when a face effect is chosen, so the base app bundle
+  actually got **smaller** (≈48 KB gz), not bigger.
+
+### Notes
+
+- **PopStrip flavour only** — the faithful Photobooth flavour keeps Apple's exact
+  roster and output.
+
 ## [2.6.0] — 2026-07-18 — Themes 🍬
 
 Pick your booth's color. The faithful **Photobooth** flavour now comes in the

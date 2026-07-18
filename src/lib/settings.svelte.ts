@@ -2,7 +2,7 @@
 // Uses Svelte 5 runes; mutating `settings.*` updates the UI everywhere.
 
 import { isEffectId, gpuOf, inFlavor, type EffectId, type FlavorId } from './effects';
-import { isOverlayId, isFacePropId, type OverlayId, type FacePropId } from './overlay';
+import { isOverlayId, isFacePropId, isFacePaintId, type OverlayId, type FacePropId, type FacePaintId } from './overlay';
 import { isFrameId, type FrameId } from './frames';
 import { isCandy, DEFAULT_CANDY, type Candy } from './themes';
 
@@ -42,6 +42,9 @@ type SettingsShape = {
   // AR face prop (PopStrip flavor): 'none' or a wearable (shades, top hat, …).
   // Orthogonal to arOverlay too — you can wear shades AND have birds orbiting.
   faceProp: FacePropId;
+  // AR face paint (PopStrip flavor): 'none' or a painted-on design (butterfly,
+  // tiger, …). Orthogonal to arOverlay + faceProp — paint the face AND wear shades.
+  facePaint: FacePaintId;
   // Decorative frame (PopStrip flavor): 'none' or a border (classic, filmstrip,
   // …) drawn around the picture. Orthogonal to everything else — it wraps the
   // final photo and movie clip on top of any effect / background / AR.
@@ -87,6 +90,7 @@ export const settings = $state<SettingsShape>({
   customBackground: typeof saved.customBackground === 'string' ? saved.customBackground : undefined,
   arOverlay: isOverlayId(saved.arOverlay) ? saved.arOverlay : 'none',
   faceProp: isFacePropId(saved.faceProp) ? saved.faceProp : 'none',
+  facePaint: isFacePaintId(saved.facePaint) ? saved.facePaint : 'none',
   frame: isFrameId(saved.frame) ? saved.frame : 'none',
 });
 

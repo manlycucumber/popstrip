@@ -14,7 +14,7 @@
   import { browserCategories, effect as effectOf, gpuOf, type EffectId, type FlavorId } from '../effects';
   import { settings, effectIntensity, toggleFavorite } from '../settings.svelte';
   import { BACKGROUNDS, sceneDataUri, fileToDataUrl } from '../backgrounds';
-  import { OVERLAYS, FACE_PROPS } from '../overlay';
+  import { OVERLAYS, FACE_PROPS, FACE_PAINTS } from '../overlay';
   import { FRAMES, drawFrame, type FrameId } from '../frames';
   import { cameraStream, cameraVideo } from '../camera.svelte';
   import { ensureGpu, renderLive, hasWebGL } from '../gpu/renderer';
@@ -193,6 +193,12 @@
     settings.faceProp = id; // orthogonal — stacks with any effect, background + overlay
   }
 
+  // --- Face paint (painted-on designs) -------------------------------------
+  const curPaint = $derived(settings.facePaint || 'none');
+  function pickPaint(id: (typeof FACE_PAINTS)[number]['id']): void {
+    settings.facePaint = id; // orthogonal — stacks with any effect, background, overlay + prop
+  }
+
   // --- Frames (decorative borders) -----------------------------------------
   const curFrame = $derived(settings.frame || 'none');
   function pickFrame(id: FrameId): void {
@@ -326,6 +332,23 @@
               class:active={curProp === fp.id}
               onclick={() => pickProp(fp.id)}
               aria-pressed={curProp === fp.id}
+              title={fp.label}
+            >
+              <span class="fxb-bg-glyph">{fp.glyph}</span>
+              <span class="fxb-name">{fp.label}</span>
+            </button>
+          {/each}
+        </div>
+      </section>
+      <section class="fxb-section">
+        <h3 class="fxb-h">Face paint <span class="fxb-h-note">painted on · photos &amp; clips</span></h3>
+        <div class="fxb-grid fxb-bg-grid">
+          {#each FACE_PAINTS as fp (fp.id)}
+            <button
+              class="fxb-cell fxb-bgcell"
+              class:active={curPaint === fp.id}
+              onclick={() => pickPaint(fp.id)}
+              aria-pressed={curPaint === fp.id}
               title={fp.label}
             >
               <span class="fxb-bg-glyph">{fp.glyph}</span>

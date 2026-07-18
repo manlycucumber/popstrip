@@ -10,7 +10,7 @@
   import { ensureSegmenter, segment } from './lib/segment';
   import { loadBackground, composite } from './lib/backgrounds';
   import { ensureFaceDetector, detectFace } from './lib/face';
-  import { drawAR, type OverlayId, type FacePropId } from './lib/overlay';
+  import { drawAR, ensureOverlayDraw, type OverlayId, type FacePropId, type FacePaintId } from './lib/overlay';
   import type { FrameId } from './lib/frames';
   import { createRecorder, acquireMic, stopMic, canRecord, MAX_CLIP_MS, type RecorderBackend } from './lib/record';
   import { resetGifFrames, gifFrameCount, gifFrameData, GIF_W, GIF_H, GIF_DELAY_MS } from './lib/gif';
@@ -120,6 +120,11 @@
     return settings.flavor !== 'photobooth' ? settings.faceProp || 'none' : 'none';
   }
 
+  /** The active AR face paint id, or 'none' (only in the PopStrip flavor). */
+  function activeFacePaint(): FacePaintId {
+    return settings.flavor !== 'photobooth' ? settings.facePaint || 'none' : 'none';
+  }
+
   /** The active decorative frame id, or 'none' (only in the PopStrip flavor). */
   function activeFrame(): FrameId {
     return settings.flavor !== 'photobooth' ? settings.frame || 'none' : 'none';
@@ -167,9 +172,11 @@
   async function bakeOverlay(frame: HTMLCanvasElement): Promise<HTMLCanvasElement> {
     const overlayId = activeOverlay();
     const propId = activeProp();
-    if (overlayId === 'none' && propId === 'none') return frame;
+    const facePaintId = activeFacePaint();
+    if (overlayId === 'none' && propId === 'none' && facePaintId === 'none') return frame;
     try {
       if (!(await ensureFaceDetector())) return frame;
+      await ensureOverlayDraw(); // load the painter chunk before baking the still
       const anchor = detectFace(videoEl!, performance.now());
       if (!anchor) return frame;
       // Copy onto an independent 2D canvas (frame may be a GPU-backed canvas),
@@ -186,7 +193,7 @@
       layer.height = out.height;
       const lctx = layer.getContext('2d');
       if (!lctx) return out;
-      drawAR(lctx, overlayId, propId, anchor, performance.now(), settings.mirror, out.width, out.height);
+      drawAR(lctx, overlayId, propId, facePaintId, anchor, performance.now(), settings.mirror, out.width, out.height);
       octx.drawImage(layer, 0, 0);
       return out;
     } catch {
@@ -670,6 +677,7 @@
       settings.customBackground,
       settings.arOverlay,
       settings.faceProp,
+      settings.facePaint,
       settings.frame,
     ];
     saveSettings();
