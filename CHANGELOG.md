@@ -5,7 +5,33 @@ Every version lands on `main`; `main` is always the deployment target for [popst
 
 ## [Unreleased]
 
-_Next toward **v3.0.0** (add-ons feature-complete): themes, print, then graduate. Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
+_Next toward **v3.0.0** (add-ons feature-complete): stickers, print, then graduate. Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
+
+## [2.6.0] — 2026-07-18 — Themes 🍬
+
+Pick your booth's color. The faithful **Photobooth** flavour now comes in the
+**iMac G3 candy line** — six translucent Aqua colours that retint the whole gel
+skin from one hue, just like choosing your iMac in 1999.
+
+### Added
+
+- A **candy-colour chip** in the Photobooth title bar: **Bondi Blue** (the
+  original, and the default), **Strawberry**, **Tangerine**, **Lime**,
+  **Blueberry**, and **Grape** — a swatch popover that recolours the booth live.
+- The choice **persists**, and is orthogonal to Light/Dark — the candy is the
+  same hue in either mode.
+
+### How it works
+
+- Each theme sets a single CSS custom property (`--candy`); the gel buttons and
+  the accent chrome **derive** from it (via `color-mix`), so one hue retints the
+  whole skin — **no new assets, no new download**, effects untouched. This also
+  refactors the Aqua skin's three hard-coded Bondi values down to that one knob.
+
+### Notes
+
+- **Photobooth flavour only** — the PopStrip flavour keeps its bold 90s-red
+  identity.
 
 ## [2.5.0] — 2026-07-04 — Frames 🖼️
 

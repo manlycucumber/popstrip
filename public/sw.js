@@ -9,7 +9,7 @@
 //
 // Bump CACHE on release to evict the old shell.
 
-const CACHE = 'popstrip-v2_5_0';
+const CACHE = 'popstrip-v2_6_0';
 const PRECACHE = [
   '/',
   '/manifest.webmanifest',

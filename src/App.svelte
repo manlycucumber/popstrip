@@ -21,6 +21,7 @@
   import Review from './lib/components/Review.svelte';
   import Modal from './lib/components/Modal.svelte';
   import Controls from './lib/components/Controls.svelte';
+  import CandyPicker from './lib/components/CandyPicker.svelte';
   import FlavorPicker from './lib/components/FlavorPicker.svelte';
   import Fallback from './lib/components/Fallback.svelte';
   import FxDefs from './lib/components/FxDefs.svelte';
@@ -663,6 +664,7 @@
       settings.effect,
       settings.effectIntensity,
       settings.flavor,
+      settings.candy,
       settings.favorites,
       settings.background,
       settings.customBackground,
@@ -683,7 +685,7 @@
   });
 </script>
 
-<div class="app" data-mode={settings.theme} data-flavor={settings.flavor ?? 'popstrip'}>
+<div class="app" data-mode={settings.theme} data-flavor={settings.flavor ?? 'popstrip'} data-candy={settings.candy}>
   <!-- Title bar -->
   <div class="titlebar">
     <div class="wordmark"><span class="lens"></span><span>PopStrip</span></div>
@@ -723,6 +725,10 @@
     </label>
 
     <div class="spacer"></div>
+
+    {#if settings.flavor === 'photobooth'}
+      <CandyPicker />
+    {/if}
 
     <Controls
       {countdownLabel}

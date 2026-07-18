@@ -4,6 +4,7 @@
 import { isEffectId, gpuOf, inFlavor, type EffectId, type FlavorId } from './effects';
 import { isOverlayId, isFacePropId, type OverlayId, type FacePropId } from './overlay';
 import { isFrameId, type FrameId } from './frames';
+import { isCandy, DEFAULT_CANDY, type Candy } from './themes';
 
 export type Theme = 'light' | 'dark';
 export type CaptureMode = 'single' | 'quad' | 'movie';
@@ -24,6 +25,9 @@ type SettingsShape = {
   // Which booth "flavor" is active. `undefined` ⇒ the one-time first-run picker
   // hasn't been answered yet. Once chosen it persists and is switchable anytime.
   flavor?: FlavorId;
+  // Candy color for the Photobooth (iMac G3) flavor — retints the Aqua skin's
+  // one accent hue. Ignored by the PopStrip flavor. Defaults to Bondi.
+  candy: Candy;
   // PopStrip-flavor pinned effects, shown first in the effect browser.
   favorites: EffectId[];
   // Green-screen (PopStrip flavor): the chosen backdrop — 'none', a built-in
@@ -77,6 +81,7 @@ export const settings = $state<SettingsShape>({
   effect: isEffectId(saved.effect) ? saved.effect : 'normal',
   effectIntensity: { ...(saved.effectIntensity ?? {}) },
   flavor: saved.flavor === 'photobooth' || saved.flavor === 'popstrip' ? saved.flavor : undefined,
+  candy: isCandy(saved.candy) ? saved.candy : DEFAULT_CANDY,
   favorites: Array.isArray(saved.favorites) ? saved.favorites.filter(isEffectId) : [],
   background: typeof saved.background === 'string' ? saved.background : 'none',
   customBackground: typeof saved.customBackground === 'string' ? saved.customBackground : undefined,
@@ -118,6 +123,12 @@ export function toggleTheme(): void {
 export function setFlavor(flavor: FlavorId): void {
   settings.flavor = flavor;
   if (!inFlavor(settings.effect, flavor)) settings.effect = 'normal';
+  saveSettings();
+}
+
+/** Set the Photobooth flavor's candy color (iMac G3 theme). */
+export function setCandy(id: Candy): void {
+  settings.candy = id;
   saveSettings();
 }
 

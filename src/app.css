@@ -1836,9 +1836,12 @@ body {
    pinstriped chrome, brushed-metal shelf, translucent candy accent (--candy).
    Only class hooks are restyled — no markup changes, effects untouched. */
 .app[data-flavor='photobooth'] {
+  /* One knob drives the whole Aqua skin: the gel buttons AND the shared accent
+     chrome derive from --candy, so a [data-candy] theme (below) only has to set
+     this one hue. Bondi Blue is the original 1998 iMac and the default. */
   --candy: #0095b6;
-  --accent: #0a5a72;
-  --accent2: #0095b6;
+  --accent: color-mix(in srgb, var(--candy) 62%, black); /* was #0a5a72 — a hand-darkened Bondi */
+  --accent2: var(--candy);
   --font: 'Lucida Grande', 'Lucida Sans Unicode', Geneva, 'Segoe UI', Verdana, sans-serif;
   --display: 'Lucida Grande', 'Lucida Sans Unicode', Geneva, 'Segoe UI', sans-serif;
   --mono: 'Monaco', 'Lucida Grande', Geneva, monospace;
@@ -1868,6 +1871,29 @@ body {
   --reel: #1c2026;
   --frame: #eef1f4;
   background-image: linear-gradient(160deg, #3a4150, #232830 60%, #171b21);
+}
+
+/* ---- Candy colors (iMac G3 flavors) — Photobooth only ----------------------
+   Each theme overrides only --candy; --accent/--accent2 (base block above)
+   derive from it, so the whole Aqua skin retints from one hue in light AND dark.
+   Keep these hexes in sync with CANDIES in src/lib/themes.ts (picker swatches). */
+.app[data-flavor='photobooth'][data-candy='bondi'] {
+  --candy: #0095b6;
+}
+.app[data-flavor='photobooth'][data-candy='strawberry'] {
+  --candy: #e34d6a;
+}
+.app[data-flavor='photobooth'][data-candy='tangerine'] {
+  --candy: #f0913a;
+}
+.app[data-flavor='photobooth'][data-candy='lime'] {
+  --candy: #6bb02f;
+}
+.app[data-flavor='photobooth'][data-candy='blueberry'] {
+  --candy: #4a6fce;
+}
+.app[data-flavor='photobooth'][data-candy='grape'] {
+  --candy: #8a5cb8;
 }
 
 /* Title bar → pinstriped Platinum, dark centered-ish label, candy gel lens. */
@@ -1903,7 +1929,7 @@ body {
 }
 .app[data-flavor='photobooth'] .wordmark .lens {
   border: 1px solid rgba(0, 0, 0, 0.3);
-  background: radial-gradient(circle at 38% 32%, #7fd0e2, var(--candy));
+  background: radial-gradient(circle at 38% 32%, color-mix(in srgb, var(--candy) 45%, white), var(--candy));
   box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.7), 0 1px 1px rgba(0, 0, 0, 0.25);
   border-radius: 50%;
 }
@@ -2049,7 +2075,7 @@ body {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 .app[data-flavor='photobooth'] .fx-intensity input[type='range'] {
-  background: linear-gradient(90deg, var(--candy), #7fd0e2);
+  background: linear-gradient(90deg, var(--candy), color-mix(in srgb, var(--candy) 45%, white));
 }
 
 /* Status shelf → brushed metal. */
@@ -2096,4 +2122,81 @@ body {
 
 .app[data-flavor='photobooth'] :focus-visible {
   outline-color: var(--candy);
+}
+
+/* Candy-color picker (titlebar): Platinum gel chip + a swatch popover. Rendered
+   only in the Photobooth flavor, so all of it is scoped there. */
+.app[data-flavor='photobooth'] .candy-anchor {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.app[data-flavor='photobooth'] .candy-btn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid #9098a2;
+  border-radius: 6px;
+  background: linear-gradient(#fafafa, #dcdfe3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 1px 1px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+}
+.app[data-flavor='photobooth'] .candy-btn:hover,
+.app[data-flavor='photobooth'] .candy-btn.on {
+  background: linear-gradient(#ffffff, #e6e9ed);
+}
+.app[data-flavor='photobooth'] .candy-dot {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  /* --candy (live) → the chip always mirrors the applied skin color. */
+  background: radial-gradient(circle at 38% 30%, color-mix(in srgb, var(--candy) 42%, white), var(--candy));
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.75), 0 0 0 1px rgba(0, 0, 0, 0.28);
+}
+.app[data-flavor='photobooth'] .candy-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 50; /* match .ctrl-menu — sits above the viewport below the toolbar */
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 9px;
+  padding: 11px;
+  border: 1px solid #9098a2;
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.5);
+}
+.app[data-flavor='photobooth'] .candy-swatch {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  cursor: pointer;
+  border: 1px solid rgba(0, 0, 0, 0.28);
+  border-radius: 50%;
+  /* --sw = this theme's hue (set inline from CANDIES). */
+  background: radial-gradient(circle at 38% 30%, color-mix(in srgb, var(--sw) 45%, white), var(--sw) 82%);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.7);
+  transition: transform 0.08s ease;
+}
+.app[data-flavor='photobooth'] .candy-swatch:hover {
+  transform: translateY(-1px);
+}
+.app[data-flavor='photobooth'] .candy-swatch.on {
+  box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px color-mix(in srgb, var(--sw) 80%, white),
+    inset 0 1px 2px rgba(255, 255, 255, 0.7);
+}
+/* Comfortable tap targets on touch (the popover has room; the toolbar chip
+   keeps its size to stay aligned with the neighbouring gel buttons). */
+@media (pointer: coarse) {
+  .app[data-flavor='photobooth'] .candy-menu {
+    gap: 12px;
+    padding: 13px;
+  }
+  .app[data-flavor='photobooth'] .candy-swatch {
+    width: 40px;
+    height: 40px;
+  }
 }
