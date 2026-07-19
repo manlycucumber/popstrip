@@ -17,12 +17,14 @@
   import { shutterClick, countdownBeep } from './lib/sound';
   import { celebrate } from './lib/confetti';
   import { reel, loadReel, addCapture } from './lib/history.svelte';
+  import { applyPaperSize } from './lib/print';
   import Booth from './lib/components/Booth.svelte';
   import Review from './lib/components/Review.svelte';
   import Modal from './lib/components/Modal.svelte';
   import Controls from './lib/components/Controls.svelte';
   import CandyPicker from './lib/components/CandyPicker.svelte';
   import FlavorPicker from './lib/components/FlavorPicker.svelte';
+  import PrintSheet from './lib/components/PrintSheet.svelte';
   import Fallback from './lib/components/Fallback.svelte';
   import FxDefs from './lib/components/FxDefs.svelte';
 
@@ -38,6 +40,9 @@
   let toastTimer: ReturnType<typeof setTimeout> | undefined;
   let videoEl: HTMLVideoElement | null = null;
   let isFullscreen = $state(false);
+
+  // Print sheet instance (bound below), driven imperatively from Review's Print button.
+  let printSheet = $state<{ print: () => void | Promise<void> } | null>(null);
 
   // Source frames of the capture currently under review (for relayout / redo).
   let frames = $state<HTMLCanvasElement[] | null>(null);
@@ -66,6 +71,15 @@
     camera.devices.find((d) => d.deviceId === camera.deviceId)?.label || 'Camera',
   );
   const retakeHint = $derived(retakeIndex !== null ? `↺ Redoing photo ${retakeIndex + 1} — get ready!` : '');
+
+  // Caption printed on the paper beneath the photo — a flavor glyph + the URL the
+  // baked-in footer omits. No wordmark: the photo already bakes "PopStrip", so
+  // repeating it (or, in Photobooth flavor, contradicting it) would double-brand.
+  const printCaption = $derived(settings.flavor === 'photobooth' ? '📷 popstrip.app' : '✨ popstrip.app');
+
+  function doPrint(): void {
+    void printSheet?.print();
+  }
 
   const delay = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
   const todayStr = (): string =>
@@ -648,6 +662,11 @@
     }
   });
 
+  // Keep the printed @page size in sync with the setting (runs on mount too).
+  $effect(() => {
+    applyPaperSize(settings.paperSize);
+  });
+
   // Warm the GPU effects chunk (dynamic-import pixi) once the camera is live, so
   // the first time a warp/stylize effect is picked it renders instantly.
   let gpuWarmed = false;
@@ -679,6 +698,7 @@
       settings.faceProp,
       settings.facePaint,
       settings.frame,
+      settings.paperSize,
     ];
     saveSettings();
   });
@@ -759,10 +779,13 @@
             canEdit={!!frames}
             canGif={gifReady}
             currentLayout={reviewLayout}
+            paperSize={settings.paperSize}
             onRetake={retake}
             onRetakeCell={retakeCell}
             onRelayout={relayout}
             onExportGif={exportGif}
+            onPrint={doPrint}
+            onPaper={(s) => (settings.paperSize = s)}
             onToast={showToast}
           />
         </Modal>
@@ -806,3 +829,11 @@
 
   <FxDefs />
 </div>
+
+<!-- Off-screen print target: a sibling of .app so the print stylesheet can hide
+     the app and show only this. Mounted only for a printable still under review —
+     the same gate as the Print button (no video, no GIF), so a stray browser
+     Ctrl+P on a clip/GIF can't print a lone frame the app never offered to print. -->
+{#if screen === 'review' && shot && shot.media !== 'video' && shot.blob.type !== 'image/gif'}
+  <PrintSheet bind:this={printSheet} url={shot.url} caption={printCaption} />
+{/if}

@@ -5,6 +5,7 @@ import { isEffectId, gpuOf, inFlavor, type EffectId, type FlavorId } from './eff
 import { isOverlayId, isFacePropId, isFacePaintId, type OverlayId, type FacePropId, type FacePaintId } from './overlay';
 import { isFrameId, type FrameId } from './frames';
 import { isCandy, DEFAULT_CANDY, type Candy } from './themes';
+import { isPaperSize, type PaperSize } from './print';
 
 export type Theme = 'light' | 'dark';
 export type CaptureMode = 'single' | 'quad' | 'movie';
@@ -49,6 +50,9 @@ type SettingsShape = {
   // …) drawn around the picture. Orthogonal to everything else — it wraps the
   // final photo and movie clip on top of any effect / background / AR.
   frame: FrameId;
+  // Paper size for printing a finished photo (both flavors). Drives the @page
+  // rule; the browser's print dialog can still override it. Defaults to Letter.
+  paperSize: PaperSize;
 };
 
 const KEY = 'popstrip:settings';
@@ -92,6 +96,7 @@ export const settings = $state<SettingsShape>({
   faceProp: isFacePropId(saved.faceProp) ? saved.faceProp : 'none',
   facePaint: isFacePaintId(saved.facePaint) ? saved.facePaint : 'none',
   frame: isFrameId(saved.frame) ? saved.frame : 'none',
+  paperSize: isPaperSize(saved.paperSize) ? saved.paperSize : 'letter',
 });
 
 /** Current intensity (0..1) for an effect, falling back to its registered default. */

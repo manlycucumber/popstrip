@@ -5,7 +5,33 @@ Every version lands on `main`; `main` is always the deployment target for [popst
 
 ## [Unreleased]
 
-_Next toward **v3.0.0** (add-ons feature-complete): stickers, print, then graduate. Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
+_Next toward **v3.0.0** (add-ons feature-complete): **stickers**, then graduate. Tracked: lock effect fidelity against real Photo Booth via the automated `tools/pb-verify` harness (needs a one-time Mac capture)._
+
+## [2.8.0] — 2026-07-19 — Print 🖨️
+
+Put it on paper. Any finished photo — single, quad grid, or strip — now has a
+**Print** button in the review screen that hands off to your browser's print
+dialog, so you can print to any printer (or "Save as PDF") with nothing ever
+leaving your device.
+
+### Added
+
+- A **Print** button on the review screen for stills (single / grid / strip),
+  with a **US Letter / A4** paper-size toggle that persists.
+- A small **flavour-aware caption** printed on the paper beneath the photo
+  (`✨ popstrip.app` in the PopStrip flavour, `📷 popstrip.app` in Photobooth).
+
+### How it works
+
+- The photo is centred on the chosen paper by a dedicated **print stylesheet** —
+  no pop-up window, **no new dependency**, and it works **offline**. Printing
+  reuses the already-composed photo, so the **saved image is unchanged**.
+- Paper size drives an `@page` rule; the browser's own print dialog can still
+  override size, orientation, and margins.
+
+### Notes
+
+- Movies and GIFs aren't printable (they're motion) — Print appears for stills only.
 
 ## [2.7.0] — 2026-07-18 — Face paint 🎨
 

@@ -4,26 +4,33 @@
   import { extForMime } from '../record';
   import { canUseFolder, saveToFolder, downloadBlob } from '../save';
   import { canShareFile, shareFile, canCopyImage, copyImage } from '../share';
+  import type { PaperSize } from '../print';
 
   let {
     shot,
     canEdit,
     canGif,
     currentLayout,
+    paperSize,
     onRetake,
     onRetakeCell,
     onRelayout,
     onExportGif,
+    onPrint,
+    onPaper,
     onToast,
   }: {
     shot: Shot;
     canEdit: boolean;
     canGif: boolean;
     currentLayout: Layout;
+    paperSize: PaperSize;
     onRetake: () => void;
     onRetakeCell: (index: number) => void;
     onRelayout: (layout: Layout) => void;
     onExportGif: (boomerang: boolean) => void | Promise<void>;
+    onPrint: () => void;
+    onPaper: (size: PaperSize) => void;
     onToast: (message: string) => void;
   } = $props();
 
@@ -182,6 +189,24 @@
       <button class="act" onclick={copy} disabled={busy}>
         <span class="ic">📋</span>
         <span>Copy<small>to the clipboard</small></span>
+      </button>
+    {/if}
+
+    {#if !isVideo && !isGif}
+      <div class="paper">
+        <span class="cr-label" id="paper-size-label">Paper size</span>
+        <div class="layouts" role="group" aria-labelledby="paper-size-label">
+          <button class="chip" aria-pressed={paperSize === 'letter'} onclick={() => onPaper('letter')} disabled={busy}>
+            US Letter
+          </button>
+          <button class="chip" aria-pressed={paperSize === 'a4'} onclick={() => onPaper('a4')} disabled={busy}>
+            A4
+          </button>
+        </div>
+      </div>
+      <button class="act" onclick={onPrint} disabled={busy}>
+        <span class="ic">🖨️</span>
+        <span>Print<small>on paper</small></span>
       </button>
     {/if}
 
